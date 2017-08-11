@@ -7,7 +7,7 @@ plugins:
   - serverless-pseudo-parameters
 
 custom:
-  githubStatusContext: codebuild-ci/pr
+  githubStatusContext: codebuild-ci
   parameters:
     GithubUsername:
       Type: String
