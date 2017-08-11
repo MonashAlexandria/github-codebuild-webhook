@@ -6,16 +6,16 @@ var codebuild = new AWS.CodeBuild();
 var GitHubApi = require("github");
 var github = new GitHubApi();
 var BUILD_ACTIONS = [
-    "opened",
-    "reopened",
-    "synchronize"
+  "opened",
+  "reopened",
+  "synchronize"
 ];
 
 // setup github client
 github.authenticate({
-    type: "basic",
-    username: process.env.GITHUB_USERNAME,
-    password: process.env.GITHUB_ACCESS_TOKEN
+  type: "basic",
+  username: process.env.GITHUB_USERNAME,
+  password: process.env.GITHUB_ACCESS_TOKEN
 });
 
 // get the region where this lambda is running
@@ -28,63 +28,64 @@ var githubContext = process.env.GITHUB_STATUS_CONTEXT;
 module.exports.start_build = (event, context, callback) => {
 
   var response = {
-    pull_request: {},
+    gitEvent: {},
     build: {}
   };
 
-  // we only act on pull_request changes (can be any, but we don't need those)
-  if('pull_request' in event) {
+  console.log(event);
 
-    if(BUILD_ACTIONS.indexOf(event.action) >= 0) {
+  var isPullRequest = 'pull_request' in event && BUILD_ACTIONS.indexOf(event.action) >= 0;
 
-      response.pull_request = event.pull_request
-      var head = event.pull_request.head;
-      var base = event.pull_request.base;
-      var repo = base.repo;
-
-      var params = {
-        projectName: process.env.BUILD_PROJECT,
-        sourceVersion: 'pr/' + event.pull_request.number
-      };
-
-      // start the codebuild process for this project
-      codebuild.startBuild(params, function(err, data) {
-        if (err) {
-          console.log(err, err.stack);
-          callback(err);
-        } else {
-
-          response.build = data.build;
-
-          // all is well, mark the commit as being 'in progress'
-          github.repos.createStatus({
-            owner: repo.owner.login,
-            repo: repo.name,
-            sha: head.sha,
-            state: 'pending',
-            target_url: 'https://' + region + '.console.aws.amazon.com/codebuild/home?region=' + region + '#/builds/' + data.build.id + '/view/new',
-            context: githubContext,
-            description: 'Build is running...'
-          }).then(function(data){
-            console.log(data);
-          });
-          callback(null, response);
-        }
-      });
-    } else {
-      callback("Event is not a build action")
-    }
-  } else {
-    callback("Not a PR");
+  if (isPullRequest && BUILD_ACTIONS.indexOf(event.action) <= 0) {
+    callback(null, 'Event is not a build action');
+    return;
   }
+
+
+  var codeBuildParams = {
+    projectName: process.env.BUILD_PROJECT,
+    sourceVersion: isPullRequest ? 'pr/' + event.pull_request.number : event.after
+  };
+
+  var commitSha = isPullRequest ? event.pull_request.head.sha : event.after;
+  var repo = event.repository;
+  var context = githubContext + (isPullRequest ? '/pr' : '/push');
+
+  // start the codebuild process for this project
+  codebuild.startBuild(codeBuildParams, function (err, data) {
+    if (err) {
+      console.log(err, err.stack);
+      callback(err);
+    } else {
+
+      response.build = data.build;
+      response.gitEvent.sha = commitSha;
+      response.gitEvent.repo = event.repository;
+      response.gitEvent.context = context;
+
+      // all is well, mark the commit as being 'in progress'
+      github.repos.createStatus({
+        owner: repo.owner.login,
+        repo: repo.name,
+        sha: commitSha,
+        state: 'pending',
+        target_url: 'https://' + region + '.console.aws.amazon.com/codebuild/home?region=' + region + '#/builds/' + data.build.id + '/view/new',
+        context: githubContext,
+        description: 'Build is running...'
+      }).then(function (data) {
+        console.log(data);
+      });
+      callback(null, response);
+    }
+  });
 }
 
 module.exports.check_build_status = (event, context, callback) => {
   var response = event;
   var params = {
     ids: [event.build.id]
-  }
-  codebuild.batchGetBuilds(params, function(err, data) {
+  };
+  codebuild.batchGetBuilds(params, function (err, data) {
     if (err) {
       console.log(err, err.stack);
       context.fail(err)
@@ -98,16 +99,15 @@ module.exports.check_build_status = (event, context, callback) => {
 
 module.exports.build_done = (event, context, callback) => {
   // get the necessary variables for the github call
-  var base = event.pull_request.base;
-  var head = event.pull_request.head;
-  var repo = base.repo;
+  var commitSha = event.gitEvent.sha;
+  var repo = event.gitEvent.repo;
 
-  console.log('Found commit identifier: ' + head.sha);
+  console.log('Found commit identifier: ' + event.gitEvent.sha);
 
   // map the codebuild status to github state
   var buildStatus = event.build.buildStatus;
   var state = '';
-  switch(buildStatus) {
+  switch (buildStatus) {
     case 'SUCCEEDED':
       state = 'success';
       break;
@@ -126,12 +126,12 @@ module.exports.build_done = (event, context, callback) => {
   github.repos.createStatus({
     owner: repo.owner.login,
     repo: repo.name,
-    sha: head.sha,
+    sha: commitSha,
     state: state,
     target_url: 'https://' + region + '.console.aws.amazon.com/codebuild/home?region=' + region + '#/builds/' + event.build.id + '/view/new',
-    context: githubContext,
+    context: event.gitEvent.context,
     description: 'Build ' + buildStatus + '...'
-  }).catch(function(err){
+  }).catch(function (err) {
     console.log(err);
     context.fail(data);
   });
