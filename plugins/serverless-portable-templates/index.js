@@ -20,6 +20,10 @@ class ServerlessPortableTemplates {
     // remove the RoleName, so CloudFormation will generate one for us
     delete template['Resources']['IamRoleLambdaExecution']['Properties']['RoleName'];
 
+    this.serverless.cli.consoleLog('HHHHSHSHSHSHSHSHSHSHSHSH');
+
+    template['Resources']['ApiGatewayMethodTriggerDashbuildPost']['Properties']['Integration']['RequestTemplates']['application/json']['Fn::Join'][1][0] = "#set( $body = $util.escapeJavaScript($input.body.replaceAll(\"'\", \"_\")) ) \n\n";
+
   }
 }
 
