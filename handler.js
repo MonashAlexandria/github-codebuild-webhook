@@ -40,14 +40,28 @@ module.exports.start_build = (event, context, callback) => {
     callback(null, 'Event is not a build action');
     return;
   }
+  var commitSha = isPullRequest ? event.pull_request.head.sha : event.after;
 
 
   var codeBuildParams = {
     projectName: process.env.BUILD_PROJECT,
-    sourceVersion: isPullRequest ? 'pr/' + event.pull_request.number : event.after
+    sourceVersion: isPullRequest ? 'pr/' + event.pull_request.number : event.after,
+    environmentVariablesOverride: [
+      {
+        name: 'EVENT_TYPE',
+        value: isPullRequest ? "pr" : "push"
+      },
+      {
+        name: 'BRANCH',
+        value: isPullRequest ? event.pull_request.head.ref : event.ref.replace("refs/heads", "")
+      },
+      {
+        name: 'COMMIT_SHA',
+        value: commitSha
+      }
+    ]
   };
 
-  var commitSha = isPullRequest ? event.pull_request.head.sha : event.after;
   var repo = event.repository;
   var context = githubContext + (isPullRequest ? '/pr' : '/push');
 
