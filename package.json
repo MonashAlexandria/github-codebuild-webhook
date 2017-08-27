@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "dependencies": {
     "aws-sdk": "^2.40.0",
+    "bluebird": "^3.5.0",
     "github": "^9.2.0"
   },
   "devDependencies": {

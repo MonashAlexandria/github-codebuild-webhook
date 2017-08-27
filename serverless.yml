@@ -127,8 +127,8 @@ stepFunctions:
           check_build_status_outcome:
             Type: Choice
             Choices:
-            - Variable: "$.build.buildComplete"
-              BooleanEquals: true
+            - Variable: "$.buildComplete"
+              StringEquals: "completed"
               Next: build_done
             Default: wait_a_bit
           build_done:
