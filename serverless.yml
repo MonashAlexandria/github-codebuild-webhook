@@ -30,6 +30,14 @@ custom:
       Type: String
       Default: ${env:BUILD_PROJECT}
       Description: Name of the build project that should be triggered
+    CodeBuildSlackUrlCode:
+      Type: String
+      Default: ${env:SLACK_HOOK_URL_CODE}
+      Description: Slack channel for integration.
+    CodeBuildSlackChanel:
+      Type: String
+      Default: ${env:SLACK_CHANNEL}
+      Description: Slack channel for integration.
 
 provider:
   name: aws
@@ -56,6 +64,10 @@ provider:
       Ref: GithubRepository
     GITHUB_STATUS_CONTEXT:
       Ref: GithubStatusContext
+    SLACK_HOOK_URL_CODE:
+      Ref: CodeBuildSlackUrlCode
+    SLACK_CHANNEL:
+      Ref: CodeBuildSlackChanel
 
 functions:
   start-build:
