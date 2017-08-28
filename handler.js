@@ -156,11 +156,13 @@ module.exports.build_done = (event, context, callback) => {
 
     let postData = {
       channel: slackChannel,
-      text: "*" + build.gitEvent.context + "*",
-      attachments: {
-        "color": severity,
-        "text": noticeEmoji + buildStatus + ' - <' + targetUrl + '|More info...>'
-      }
+      text: `* ${buildStatus} - Branch: ${build.gitEvent.branch} - Build: ${build.gitEvent.context}*`,
+      attachments: [
+        {
+          color: severity,
+          text: `${noticeEmoji} @${build.gitEvent.author} - <${build.gitEvent.url}|More on Github> - <${targetUrl}|Build log>`//noticeEmoji + buildStatus + ' - <' + targetUrl + '|More info...>'
+        }
+      ]
     };
 
     // POST to slack channel
@@ -217,7 +219,7 @@ class GithubBuild {
   }
 
   getBranch() {
-    return this.event.ref.replace("refs/heads", "")
+    return this.event.ref.replace("refs/heads/", "")
   }
 
   getSourceVersion() {
@@ -230,6 +232,14 @@ class GithubBuild {
 
   getCommitMsg() {
     return this.event.head_commit.message;
+  }
+
+  getUrl() {
+    return this.event.head_commit.url;
+  }
+
+  getAuthor() {
+    return this.event.head_commit.author.username;
   }
 
   getEnvVariables(){
@@ -359,7 +369,10 @@ class GithubBuild {
         gitEvent: {
           sha: this.commitSha,
           repo: this.repo,
-          context: buildContext
+          context: buildContext,
+          branch: this.getBranch(),
+          url: this.getUrl(),
+          author: this.getAuthor()
         }
       });
 
@@ -420,5 +433,13 @@ class Pr extends GithubBuild{
 
   getCommitMsg() {
     return "";
+  }
+
+  getUrl() {
+    return this.event.pull_request.url;
+  }
+
+  getAuthor() {
+    return this.event.pull_request.user.login;
   }
 }
