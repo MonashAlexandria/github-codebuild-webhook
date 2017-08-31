@@ -37,35 +37,59 @@ const slackChannel = process.env.SLACK_CHANNEL;
 module.exports.start_build = (event, context, callback) => {
 
   console.log(event);
+  let githubEvent = event;
 
-  const isPullRequest = 'pull_request' in event && BUILD_ACTIONS.indexOf(event.action) >= 0;
+  if('buildable' in event){
+    githubEvent = event.event;
+  }
 
-  if (isPullRequest && BUILD_ACTIONS.indexOf(event.action) < 0) {
+  const isPullRequest = 'pull_request' in githubEvent && BUILD_ACTIONS.indexOf(githubEvent.action) >= 0;
+
+  if (isPullRequest && BUILD_ACTIONS.indexOf(githubEvent.action) < 0) {
     console.log('Build not in build action');
     callback(null, 'Event is not a build action');
     return;
   }
 
-  let githubBuild = isPullRequest ? new Pr(event) : new GithubBuild(event);
+  let githubBuild = isPullRequest ? new Pr(githubEvent) : new GithubBuild(githubEvent);
 
-  const buildTasks = githubBuild.startBuilds();
+  const response = {};
 
-  if(typeof buildTasks === 'undefined' || buildTasks.length === 0){
-    callback(null, 'No build tasks specified');
-    return;
-  }
+  githubBuild.buildable().then(mergeability => {
 
-  console.log('start them and wait for the them to finish');
-  Promise.all(buildTasks).then(dataItems => {
-    const responses = githubBuild.updateGithub(dataItems);
-    callback(null, {
-      responses: responses
+    if(mergeability === false){
+      callback(new Error("Not mergable, just return"));
+      return;
+    }
+
+    if(mergeability === null || typeof mergeability === 'undefined'){
+      response.buildable = 'null';
+      response.event = githubEvent;
+      callback(null, response);
+      return;
+    }
+
+    //Let it continue
+    response.buildable = 'true';
+
+    githubBuild.startBuilds().then(buildTasks => {
+      console.log('start them and wait for the them to finish');
+      if(typeof buildTasks === 'undefined' || buildTasks.length === 0){
+        console.log('no build task specified, return');
+        callback(new Error('No build tasks specified'));
+        return;
+      }
+
+      Promise.all(buildTasks).then(dataItems => {
+        response.responses = githubBuild.updateGithub(dataItems);
+        callback(null, response);
+      }).catch(err => {
+        console.log(err, err.stack);
+        callback(err);
+      });
+
     });
-  }).catch(err => {
-    console.log(err, err.stack);
-    callback(err);
   });
-  console.log('here');
 };
 
 module.exports.check_build_status = (event, context, callback) => {
@@ -100,9 +124,12 @@ module.exports.check_build_status = (event, context, callback) => {
       responses = responses.map(res => {
         console.log("res.buildId", res.buildId);
         if(res.buildId == buildId) {
-          console.log('replacing build', res.build, build);
+          const preBuildComplete = res.buildComplete;
           res.buildComplete = build.buildComplete;
           res.buildStatus = build.buildStatus;
+          if(!preBuildComplete && res.buildComplete) {
+            GithubBuild.finishBuild(res, context);
+          }
         }
         return res;
       });
@@ -121,8 +148,217 @@ module.exports.check_build_status = (event, context, callback) => {
 };
 
 module.exports.build_done = (event, context, callback) => {
+  callback(null, 'done');
+};
 
-  for(let build of event.responses) {
+class GithubBuild {
+
+  constructor(event){
+    this.event = event;
+    this.commitSha = this.getCommitSha();
+    this.repo = event.repository;
+  }
+
+  getCommitSha(event){
+    return this.event.after;
+  }
+
+  getEventType(){
+    return "push";
+  }
+
+  getBranch() {
+    return this.event.ref.replace("refs/heads/", "")
+  }
+
+  getSourceVersion() {
+    return this.event.after;
+  }
+
+  getProjectName() {
+    return process.env.BUILD_PROJECT;
+  }
+
+  getCommitMsg() {
+    return this.event.head_commit.message;
+  }
+
+  getSlackMsg() {
+    return this.getCommitMsg();
+  }
+
+  getUrl() {
+    return this.event.head_commit.url;
+  }
+
+  getAuthor() {
+    return this.event.head_commit.author.username;
+  }
+
+  getEnvVariables(){
+    return [
+      {
+        name: 'EVENT_TYPE',
+        value: this.getEventType()
+      },
+      {
+        name: 'BRANCH',
+        value: this.getBranch()
+      },
+      {
+        name: 'COMMIT_SHA',
+        value: this.commitSha
+      }
+    ]
+  }
+
+  getTests() {
+    let tests = [];
+    const branch = this.getBranch();
+    const forceRegex = new RegExp(/.*\[force ([a-z]+)([\s][^\]]+)?].*/gm);
+    const commitMsg = this.getCommitMsg();
+    const matches = forceRegex.exec(commitMsg);
+    console.log(matches);
+    let forceCommand = null;
+    let forceTest = null;
+    if (matches !== null && matches.length >= 2 && ('push' === this.getEventType() || 'api' === this.getEventType())) {
+      forceCommand = matches[1];
+      forceTest = matches.length >= 3 ? matches[2] : null;
+    }
+
+    tests.push({
+      name: "js-php",
+      type: "unit-tests",
+      deployable: false
+    });
+
+    if(branch === "release" || forceCommand === "uat" || this.enableUatAndFunctionalTests()) {
+      if(typeof forceTest !== 'undefined') {
+        tests.push({
+          name: forceTest.trim(),
+          type: "uat",
+          deployable: true
+        });
+      } else {
+
+        tests.push({
+          name: "backend",
+          type: "uat",
+          deployable: true
+        });
+
+        tests.push({
+          name: "frontend",
+          type: "uat",
+          deployable: false
+        });
+
+        tests.push({
+          name: "functional",
+          type: "functional",
+          deployable: false
+        });
+
+      }
+    }
+
+    return tests;
+  }
+
+  enableUatAndFunctionalTests(){
+    return false;
+  }
+
+  getBuildTasks(){
+    const buildTasks = [];
+
+    const tests = this.getTests();
+
+    for(let test of tests){
+      const testType = test.type;
+      const testName = test.name;
+      const deployable = test.deployable;
+
+      let envVariables = this.getEnvVariables();
+      envVariables.push({
+        name: "TEST_TYPE",
+        value: testType
+      });
+      envVariables.push({
+        name: "TEST_NAME",
+        value: testName
+      });
+      envVariables.push({
+        name: "GITHUB_CONTEXT",
+        value: githubContext + "/" + this.getEventType() + ": " + testType + "/" + testName /* CodeBuild-CI/push/unit-tests/js-php */
+      });
+      envVariables.push({
+        name: "DEPLOYABLE",
+        value: deployable.toString() //string only
+      });
+
+      const codeBuildParams = {
+        projectName: this.getProjectName(),
+        sourceVersion: this.getSourceVersion(),
+        environmentVariablesOverride: envVariables
+      };
+
+      console.log('push the build', githubContext + "/" + this.getEventType() + ":" + testType + "/" + testName);
+      buildTasks.push(codebuild.startBuild(codeBuildParams).promise());
+
+    }
+    return buildTasks;
+  }
+
+  startBuilds(){
+    return new Promise(resolve => {
+      const buildTasks = this.getBuildTasks();
+      resolve(buildTasks);
+    });
+  }
+
+  updateGithub(cbBuilds) {
+    console.log('response', cbBuilds);
+    const responses = [];
+    for(let i = 0; i < cbBuilds.length; i++) {
+      const cbBuild = cbBuilds[i].build;
+      const buildContext = GithubBuild.getGithubContextFromCbBuild(cbBuild.environment.environmentVariables);
+
+      responses.push({
+        buildComplete: cbBuild.buildComplete,
+        buildStatus: cbBuild.buildStatus,
+        buildEnv: cbBuild.environment.environmentVariables,
+        buildId: cbBuild.id,
+        gitEvent: {
+          sha: this.commitSha,
+          repo: this.repo,
+          context: buildContext,
+          branch: this.getBranch(),
+          url: this.getUrl(),
+          author: this.getAuthor(),
+          message: this.getSlackMsg()
+        }
+      });
+
+      // all is well, mark the commit as being 'in progress'
+      github.repos.createStatus({
+        owner: this.repo.owner.login,
+        repo: this.repo.name,
+        sha: this.commitSha,
+        state: 'pending',
+        target_url: 'https://' + region + '.console.aws.amazon.com/codebuild/home?region=' + region + '#/builds/' + cbBuild.id + '/view/new',
+        context: buildContext,
+        description: 'Build is running...'
+      }).then(function (data) {
+        console.log('Github called');
+        console.log(data);
+      });
+
+    }
+    return responses;
+  }
+
+  static finishBuild(build, context) {
     const commitSha = build.gitEvent.sha;
     const repo = build.gitEvent.repo;
 
@@ -160,7 +396,7 @@ module.exports.build_done = (event, context, callback) => {
       attachments: [
         {
           color: severity,
-          text: `${noticeEmoji} @${build.gitEvent.author} - <${build.gitEvent.url}|More on Github> - <${targetUrl}|Build log>`//noticeEmoji + buildStatus + ' - <' + targetUrl + '|More info...>'
+          text: `${noticeEmoji} @${build.gitEvent.author} - <${build.gitEvent.url}|More on Github> - <${targetUrl}|Build log> \n ${build.gitEvent.message}`//noticeEmoji + buildStatus + ' - <' + targetUrl + '|More info...>'
         }
       ]
     };
@@ -200,199 +436,6 @@ module.exports.build_done = (event, context, callback) => {
       context.fail(data);
     });
   }
-};
-
-class GithubBuild {
-
-  constructor(event){
-    this.event = event;
-    this.commitSha = this.getCommitSha();
-    this.repo = event.repository;
-  }
-
-  getCommitSha(event){
-    return this.event.after;
-  }
-
-  getEventType(){
-    return "push";
-  }
-
-  getBranch() {
-    return this.event.ref.replace("refs/heads/", "")
-  }
-
-  getSourceVersion() {
-    return this.event.after;
-  }
-
-  getProjectName() {
-    return process.env.BUILD_PROJECT;
-  }
-
-  getCommitMsg() {
-    return this.event.head_commit.message;
-  }
-
-  getUrl() {
-    return this.event.head_commit.url;
-  }
-
-  getAuthor() {
-    return this.event.head_commit.author.username;
-  }
-
-  getEnvVariables(){
-    return [
-      {
-        name: 'EVENT_TYPE',
-        value: this.getEventType()
-      },
-      {
-        name: 'BRANCH',
-        value: this.getBranch()
-      },
-      {
-        name: 'COMMIT_SHA',
-        value: this.commitSha
-      }
-    ]
-  }
-
-  getTests() {
-    let tests = [];
-    const branch = this.getBranch();
-    const forceRegex = new RegExp(/.*\[force ([a-z]+)([\s][^]+)?].*/gm);
-    const commitMsg = this.getCommitMsg();
-    const matches = forceRegex.exec(commitMsg);
-    console.log(matches);
-    let forceCommand = null;
-    let forceTest = null;
-    if (matches !== null && matches.length >= 2 && ('push' === this.getEventType() || 'api' === this.getEventType())) {
-      forceCommand = matches[1];
-      forceTest = matches.length >= 3 ? matches[2] : null;
-    }
-
-    tests.push({
-      name: "js-php",
-      type: "unit-tests",
-      deployable: false
-    });
-
-    if(branch === "release" || forceCommand === "uat") {
-      if(typeof forceTest !== 'undefined') {
-        tests.push({
-          name: forceTest,
-          type: "uat",
-          deployable: true
-        });
-      } else {
-
-        tests.push({
-          name: "backend",
-          type: "uat",
-          deployable: true
-        });
-
-        tests.push({
-          name: "frontend",
-          type: "uat",
-          deployable: false
-        });
-
-        tests.push({
-          name: "functional",
-          type: "functional",
-          deployable: false
-        });
-
-      }
-    }
-
-    return tests;
-  }
-
-  startBuilds(){
-    const buildTasks = [];
-
-    const tests = this.getTests();
-
-    for(let test of tests){
-      const testType = test.type;
-      const testName = test.name;
-      const deployable = test.deployable;
-
-      let envVariables = this.getEnvVariables();
-      envVariables.push({
-        name: "TEST_TYPE",
-        value: testType
-      });
-      envVariables.push({
-        name: "TEST_NAME",
-        value: testName
-      });
-      envVariables.push({
-        name: "GITHUB_CONTEXT",
-        value: githubContext + "/" + this.getEventType() + ": " + testType + "/" + testName /* CodeBuild-CI/push/unit-tests/js-php */
-      });
-      envVariables.push({
-        name: "DEPLOYABLE",
-        value: deployable.toString() //string only
-      });
-
-      const codeBuildParams = {
-        projectName: this.getProjectName(),
-        sourceVersion: this.getSourceVersion(),
-        environmentVariablesOverride: envVariables
-      };
-
-      console.log('push the build', githubContext + "/" + this.getEventType() + ":" + testType + "/" + testName);
-      buildTasks.push(codebuild.startBuild(codeBuildParams).promise());
-
-    }
-
-    return buildTasks;
-  }
-
-  updateGithub(cbBuilds) {
-    console.log('response', cbBuilds);
-    const responses = [];
-    for(let i = 0; i < cbBuilds.length; i++) {
-      const cbBuild = cbBuilds[i].build;
-      const buildContext = GithubBuild.getGithubContextFromCbBuild(cbBuild.environment.environmentVariables);
-
-      responses.push({
-        buildComplete: cbBuild.buildComplete,
-        buildStatus: cbBuild.buildStatus,
-        buildEnv: cbBuild.environment.environmentVariables,
-        buildId: cbBuild.id,
-        gitEvent: {
-          sha: this.commitSha,
-          repo: this.repo,
-          context: buildContext,
-          branch: this.getBranch(),
-          url: this.getUrl(),
-          author: this.getAuthor()
-        }
-      });
-
-      // all is well, mark the commit as being 'in progress'
-      github.repos.createStatus({
-        owner: this.repo.owner.login,
-        repo: this.repo.name,
-        sha: this.commitSha,
-        state: 'pending',
-        target_url: 'https://' + region + '.console.aws.amazon.com/codebuild/home?region=' + region + '#/builds/' + cbBuild.id + '/view/new',
-        context: buildContext,
-        description: 'Build is running...'
-      }).then(function (data) {
-        console.log('Github called');
-        console.log(data);
-      });
-
-    }
-    return responses;
-  }
 
   static getGithubContextFromCbBuild(envVariables){
     for (const envMap of envVariables) {
@@ -403,9 +446,18 @@ class GithubBuild {
     }
     return "";
   }
+
+  buildable(){
+    return Promise.resolve(true);
+  }
 }
 
 class Pr extends GithubBuild{
+
+  constructor(event){
+    super(event);
+    this.timeOutId = -1;
+  }
 
   getCommitSha(){
     return this.event.pull_request.head.sha;
@@ -423,16 +475,12 @@ class Pr extends GithubBuild{
     return "pr/" + this.event.pull_request.number;
   }
 
-  startBuilds(){
-    if(this.event.pull_request.mergeable) {
-      console.log('Not meregable');
-      return super.startBuilds();
-    }
-    return [];
-  }
-
   getCommitMsg() {
     return "";
+  }
+
+  getSlackMsg() {
+    return this.event.pull_request.title;
   }
 
   getUrl() {
@@ -442,4 +490,35 @@ class Pr extends GithubBuild{
   getAuthor() {
     return this.event.pull_request.user.login;
   }
+
+  enableUatAndFunctionalTests(){
+    return this.event.pull_request.base.ref === "release";
+  }
+
+  getEnvVariables(){
+    let envVariables = super.getEnvVariables();
+    envVariables.push({
+      name: 'PR_NUMBER',
+      value: this.event.pull_request.number.toString()
+    });
+    return envVariables;
+  }
+
+
+  buildable(){
+    return new Promise((resolve, reject) => {
+      github.pullRequests.get({
+        owner: this.event.repository.owner.login,
+        repo: this.event.repository.name,
+        number: this.event.pull_request.number
+      }).then(pr => {
+        console.log('mergeability', pr.data.mergeable);
+        const mergeability = pr.data.mergeable;
+        resolve(mergeability);
+      }).catch(err => {
+        reject(null);
+      })
+    });
+  }
+
 }
