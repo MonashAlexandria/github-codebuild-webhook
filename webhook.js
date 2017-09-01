@@ -44,7 +44,7 @@ module.exports.resource = (event, context, callback) => {
         sendResponse(event, context, "SUCCESS", {});
       }).catch(function(err){
         console.log(err);
-        sendResponse(event, context, "FAILED", {});
+        sendResponse(event, context, "FAILED", err);
       });
 
     } else {
@@ -52,7 +52,7 @@ module.exports.resource = (event, context, callback) => {
         sendResponse(event, context, "SUCCESS", {});
       }).catch(function(err){
         console.log(err);
-        sendResponse(event, context, "FAILED", {});
+        sendResponse(event, context, "FAILED", err);
       });;
     }
   }
@@ -66,7 +66,7 @@ function sendResponse(event, context, responseStatus, responseData) {
 
     var responseBody = JSON.stringify({
         Status: responseStatus,
-        Reason: "See the details in CloudWatch Log Stream: " + context.logStreamName,
+        Reason: "See the details in CloudWatch Log Stream: " + context.logStreamName + JSON.stringify(responseData),
         PhysicalResourceId: context.logStreamName,
         StackId: event.StackId,
         RequestId: event.RequestId,

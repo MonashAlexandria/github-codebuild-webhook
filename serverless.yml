@@ -83,6 +83,12 @@ functions:
   webhook-resource:
     handler: webhook.resource
 
+  start-build-proxy:
+    handler: handler.start_build_proxy
+    events:
+      - http: post start-build-proxy
+        method: post
+
 resources:
   Resources:
     GithubWebhook:
@@ -98,7 +104,7 @@ resources:
             -
               - https://
               - Ref: "ApiGatewayRestApi"
-              - .execute-api.#{AWS::Region}.amazonaws.com/${self:provider.stage}/trigger-build/
+              - .execute-api.#{AWS::Region}.amazonaws.com/${self:provider.stage}/start-build-proxy/
 
   Outputs:
     TriggerEndpoint:
@@ -108,7 +114,7 @@ resources:
           -
             - https://
             - Ref: "ApiGatewayRestApi"
-            - .execute-api.#{AWS::Region}.amazonaws.com/${self:provider.stage}/trigger-build/
+            - .execute-api.#{AWS::Region}.amazonaws.com/${self:provider.stage}/start-build-proxy/
 
 stepFunctions:
   stateMachines:

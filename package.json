@@ -4,7 +4,8 @@
   "dependencies": {
     "aws-sdk": "^2.40.0",
     "bluebird": "^3.5.0",
-    "github": "^9.2.0"
+    "github": "^9.2.0",
+    "node-fetch": "^1.7.2"
   },
   "devDependencies": {
     "serverless": "^1.12.1",

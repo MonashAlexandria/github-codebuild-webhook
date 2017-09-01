@@ -8,6 +8,7 @@ let Promise = require("bluebird");
 
 const https = require('https');
 const util = require('util');
+const fetch = require('node-fetch');
 
 let GitHubApi = require("github");
 let github = new GitHubApi();
@@ -32,6 +33,64 @@ const githubContext = process.env.GITHUB_STATUS_CONTEXT;
 
 const slackHookUrlCode = process.env.SLACK_HOOK_URL_CODE;
 const slackChannel = process.env.SLACK_CHANNEL;
+
+
+module.exports.start_build_proxy = (event, context, callback) => {
+  console.log("Forwarding request", event);
+  console.log(event.body);
+  console.log("body length", event.body.length);
+  let webhookPayload = event.body;
+
+  if(event.body.length >= 32768 /*Step Function: limit*/ ) {
+    console.log(event.headers['X-GitHub-Event']);
+    const body = JSON.parse(event.body);
+
+    // As Step Function can only accepte message less than 32768 characters;
+    // Need to strip out most of the data.
+    // Perhaps should go with white-list approach instead.
+    if(event.headers['X-GitHub-Event'] === 'push'){
+      console.log('Removing some data');
+      delete body.head_commit.added;
+      delete body.head_commit.removed;
+      delete body.head_commit.modified;
+      const commits = body.commits;
+      const firstCommit = commits[0];
+      delete firstCommit.added;
+      delete firstCommit.removed;
+      delete firstCommit.modified;
+      body.commits = [firstCommit];
+      webhookPayload = JSON.stringify(body);
+      console.log('Body length after cleaned up', webhookPayload.length);
+    }
+  }
+
+  const options = {
+    method: event.httpMethod,
+    headers: event.headers,
+    body: webhookPayload
+  };
+
+  console.log("Sending request with options", options);
+
+  fetch("https://" + event.headers.Host + "/trigger/trigger-build", options)
+    .then(res => {
+      console.log(res);
+
+      res.text().then(body => {
+        let response  = {
+          statusCode: res.status,
+          body: body
+        };
+        console.log('sending response back', response);
+        callback(null, response);
+      });
+    })
+    .catch(err => {
+      console.log(err);
+      callback(err);
+  });
+
+};
 
 // this function will be triggered by the github webhook
 module.exports.start_build = (event, context, callback) => {
