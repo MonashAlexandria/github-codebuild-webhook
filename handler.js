@@ -3,6 +3,7 @@
 const AWS = require('aws-sdk');
 AWS.config.setPromisesDependency(null);
 
+const kms = new AWS.KMS();
 const codebuild = new AWS.CodeBuild();
 let Promise = require("bluebird");
 
@@ -18,12 +19,8 @@ const BUILD_ACTIONS = [
   "synchronize"
 ];
 
-// setup github client
-github.authenticate({
-  type: "basic",
-  username: process.env.GITHUB_USERNAME,
-  password: process.env.GITHUB_ACCESS_TOKEN
-});
+let githubUsername;
+let githubToken;
 
 // get the region where this lambda is running
 const region = process.env.AWS_DEFAULT_REGION;
@@ -95,6 +92,48 @@ module.exports.start_build_proxy = (event, context, callback) => {
 // this function will be triggered by the github webhook
 module.exports.start_build = (event, context, callback) => {
 
+
+  if(githubUsername && githubToken){
+    console.log('Everything is ready, just start');
+    // setup github client
+    github.authenticate({
+      type: "basic",
+      username: githubUsername,
+      password: githubToken
+    });
+    executeStartBuild(event, context, callback);
+  } else {
+    console.log('Need to decrypt github username and token');
+    kms.decrypt({
+      CiphertextBlob: new Buffer(process.env.GITHUB_USERNAME, "base64")
+    }).promise().then(data => {
+
+      githubUsername = data.Plaintext.toString();
+
+      kms.decrypt({
+        CiphertextBlob: new Buffer(process.env.GITHUB_ACCESS_TOKEN, "base64")
+      }).promise().then(token => {
+        githubToken = token.Plaintext.toString();
+        // setup github client
+        github.authenticate({
+          type: "basic",
+          username: githubUsername,
+          password: githubToken
+        });
+        executeStartBuild(event, context, callback);
+      });
+
+    }).catch(err => {
+      console.log(err);
+      callback(err);
+    });
+  }
+
+
+
+};
+
+function executeStartBuild(event, context, callback){
   console.log(event);
   let githubEvent = event;
 
@@ -149,7 +188,7 @@ module.exports.start_build = (event, context, callback) => {
 
     });
   });
-};
+}
 
 module.exports.check_build_status = (event, context, callback) => {
   let responses = event.responses;

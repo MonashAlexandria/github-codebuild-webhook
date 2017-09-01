@@ -8,36 +8,6 @@ plugins:
 
 custom:
   githubStatusContext: codebuild-ci
-  parameters:
-    GithubUsername:
-      Type: String
-      Default: ${env:GITHUB_USERNAME}
-      Description: Github username, this is the user which will be displayed
-    GithubRepository:
-      Type: String
-      Default: ${env:GITHUB_REPOSITORY}
-      Description: "Github repository url, eg: https://github.com/[username]/[repository]"
-    GithubAccessToken:
-      Type: String
-      Default: ${env:GITHUB_ACCESS_TOKEN}
-      Description: Your generated github access token
-      NoEcho: true
-    GithubStatusContext:
-      Type: String
-      Default: ${env:GITHUB_STATUS_CONTEXT, self:custom.githubStatusContext}
-      Description: A label used to differentiate this status from other status integrations
-    CodebuildProject:
-      Type: String
-      Default: ${env:BUILD_PROJECT}
-      Description: Name of the build project that should be triggered
-    CodeBuildSlackUrlCode:
-      Type: String
-      Default: ${env:SLACK_HOOK_URL_CODE}
-      Description: Slack channel for integration.
-    CodeBuildSlackChanel:
-      Type: String
-      Default: ${env:SLACK_CHANNEL}
-      Description: Slack channel for integration.
 
 provider:
   name: aws
@@ -53,22 +23,12 @@ provider:
       Action:
         - codebuild:*
       Resource: "arn:aws:codebuild:#{AWS::Region}:#{AWS::AccountId}:project/${env:BUILD_PROJECT}"
+    - Effect: "Allow"
+      Action:
+        - kms:*
+      Resource: "arn:aws:kms:#{AWS::Region}:#{AWS::AccountId}:key/*"
 
-  environment:
-    BUILD_PROJECT:
-      Ref: CodebuildProject
-    GITHUB_USERNAME:
-      Ref: GithubUsername
-    GITHUB_ACCESS_TOKEN:
-      Ref: GithubAccessToken
-    GITHUB_REPOSITORY:
-      Ref: GithubRepository
-    GITHUB_STATUS_CONTEXT:
-      Ref: GithubStatusContext
-    SLACK_HOOK_URL_CODE:
-      Ref: CodeBuildSlackUrlCode
-    SLACK_CHANNEL:
-      Ref: CodeBuildSlackChanel
+  environment: ${file(serverless.env.yml):${self:provider.stage}}
 
 functions:
   start-build:
