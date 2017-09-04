@@ -1,4 +1,4 @@
-service: ${env:BUILD_PROJECT}-github-webhook
+service: ${env:BUILD_PROJECT}-codebuild-github-webhook-2
 
 plugins:
   - serverless-step-functions

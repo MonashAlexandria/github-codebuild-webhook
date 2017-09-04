@@ -5,13 +5,11 @@ var codebuild = new AWS.CodeBuild();
 
 var GitHubApi = require("github");
 var github = new GitHubApi();
+const kms = new AWS.KMS();
 
-// setup github client
-github.authenticate({
-    type: "basic",
-    username: process.env.GITHUB_USERNAME,
-    password: process.env.GITHUB_ACCESS_TOKEN
-});
+let githubUsername;
+let githubToken;
+
 
 // get the region where this lambda is running
 var region = process.env.AWS_DEFAULT_REGION;
@@ -19,13 +17,53 @@ var repo = process.env.GITHUB_REPOSITORY.split('/');
 
 
 module.exports.resource = (event, context, callback) => {
+
+  if(githubUsername && githubToken){
+    console.log('Everything is ready, just start');
+    // setup github client
+    github.authenticate({
+      type: "basic",
+      username: githubUsername,
+      password: githubToken
+    });
+    onResourceUpdateOrCreate(event, context, callback);
+  } else {
+    console.log('Need to decrypt github username and token');
+    kms.decrypt({
+      CiphertextBlob: new Buffer(process.env.GITHUB_USERNAME, "base64")
+    }).promise().then(data => {
+
+      githubUsername = data.Plaintext.toString();
+
+      kms.decrypt({
+        CiphertextBlob: new Buffer(process.env.GITHUB_ACCESS_TOKEN, "base64")
+      }).promise().then(token => {
+        githubToken = token.Plaintext.toString();
+        // setup github client
+        github.authenticate({
+          type: "basic",
+          username: githubUsername,
+          password: githubToken
+        });
+        onResourceUpdateOrCreate(event, context, callback);
+      });
+
+    }).catch(err => {
+      console.log(err);
+      callback(err);
+    });
+  }
+
+};
+
+function onResourceUpdateOrCreate(event, context, callback) {
   console.log("REQUEST RECEIVED:\n" + JSON.stringify(event));
 
   // For Delete requests, immediately send a SUCCESS response.
   if (event.RequestType == "Delete") {
-      // TODO remove webhook from repo
-      sendResponse(event, context, "SUCCESS");
-      return;
+    // TODO remove webhook from repo
+    sendResponse(event, context, "SUCCESS");
+    return;
   } else {
     var data = {
       owner: repo[3],
