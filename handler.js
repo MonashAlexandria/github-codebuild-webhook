@@ -293,6 +293,8 @@ class GithubBuild {
     this.event = event;
     this.commitSha = this.getCommitSha();
     this.repo = event.repository;
+    const currentTime = new Date();
+    this.startTime = currentTime.getTime();
   }
 
   getCommitSha(event){
@@ -344,6 +346,10 @@ class GithubBuild {
       {
         name: 'COMMIT_SHA',
         value: this.commitSha
+      },
+      {
+        name: 'ALEX_GITHUB_EVENT_TIME',
+        value: this.startTime.toString()
       }
     ]
   }
