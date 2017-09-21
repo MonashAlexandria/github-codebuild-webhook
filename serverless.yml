@@ -1,4 +1,4 @@
-service: ${env:BUILD_PROJECT}-codebuild-github-webhook-2
+service: Alexandria-codebuild-github-webhook-2
 
 plugins:
   - serverless-step-functions
@@ -16,19 +16,20 @@ provider:
   timeout: 180
   versionFunctions: false
   memorySize: 128
+  environment: ${file(serverless.env.yml):${self:provider.stage}}
 
   # you can add statements to the Lambda function's IAM Role here
   iamRoleStatements:
     - Effect: "Allow"
       Action:
         - codebuild:*
-      Resource: "arn:aws:codebuild:#{AWS::Region}:#{AWS::AccountId}:project/${env:BUILD_PROJECT}"
+      Resource: "arn:aws:codebuild:#{AWS::Region}:#{AWS::AccountId}:project/Alexandria"
     - Effect: "Allow"
       Action:
         - kms:*
       Resource: "arn:aws:kms:#{AWS::Region}:#{AWS::AccountId}:key/*"
 
-  environment: ${file(serverless.env.yml):${self:provider.stage}}
+
 
 functions:
   start-build:

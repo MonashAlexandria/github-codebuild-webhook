@@ -191,6 +191,45 @@ function executeStartBuild(event, context, callback){
 }
 
 module.exports.check_build_status = (event, context, callback) => {
+  if(githubUsername && githubToken){
+    console.log('Everything is ready, just start');
+    // setup github client
+    github.authenticate({
+      type: "basic",
+      username: githubUsername,
+      password: githubToken
+    });
+    checkBuildStatus(event, context, callback);
+  } else {
+    console.log('Need to decrypt github username and token');
+    kms.decrypt({
+      CiphertextBlob: new Buffer(process.env.GITHUB_USERNAME, "base64")
+    }).promise().then(data => {
+
+      githubUsername = data.Plaintext.toString();
+
+      kms.decrypt({
+        CiphertextBlob: new Buffer(process.env.GITHUB_ACCESS_TOKEN, "base64")
+      }).promise().then(token => {
+        githubToken = token.Plaintext.toString();
+        // setup github client
+        github.authenticate({
+          type: "basic",
+          username: githubUsername,
+          password: githubToken
+        });
+        checkBuildStatus(event, context, callback);
+      });
+
+    }).catch(err => {
+      console.log(err);
+      callback(err);
+    });
+  }
+
+};
+
+function checkBuildStatus(event, context, callback) {
   let responses = event.responses;
   console.log(responses);
   let ids = responses.reduce((buildIds, response) => {
@@ -242,8 +281,7 @@ module.exports.check_build_status = (event, context, callback) => {
     context.fail(err);
     callback(err);
   });
-
-};
+}
 
 module.exports.build_done = (event, context, callback) => {
   callback(null, 'done');
@@ -323,6 +361,7 @@ class GithubBuild {
       forceCommand = matches[1];
       forceTest = matches.length >= 3 ? matches[2] : null;
     }
+    console.log(forceCommand, forceTest);
 
     tests.push({
       name: "js-php",
@@ -331,14 +370,30 @@ class GithubBuild {
     });
 
     if(branch === "release" || forceCommand === "uat" || this.enableUatAndFunctionalTests()) {
-      if(typeof forceTest !== 'undefined') {
-        tests.push({
-          name: forceTest.trim(),
-          type: "uat",
-          deployable: true
-        });
-      } else {
 
+      if(forceCommand === 'uat') {
+
+        if(typeof forceTest !== 'undefined' && forceTest !== null) {
+          tests.push({
+            name: forceTest.trim(),
+            type: "uat",
+            deployable: true
+          });
+        } else {
+          tests.push({
+            name: "backend",
+            type: "uat",
+            deployable: true
+          });
+
+          tests.push({
+            name: "frontend",
+            type: "uat",
+            deployable: false
+          });
+        }
+
+      } else {
         tests.push({
           name: "backend",
           type: "uat",
@@ -356,7 +411,6 @@ class GithubBuild {
           type: "functional",
           deployable: false
         });
-
       }
     }
 
@@ -520,8 +574,7 @@ class GithubBuild {
     req.write(util.format("%j", postData));
     req.end();
 
-    // POST to github
-    github.repos.createStatus({
+    const githubData = {
       owner: repo.owner.login,
       repo: repo.name,
       sha: commitSha,
@@ -529,7 +582,10 @@ class GithubBuild {
       target_url: targetUrl,
       context: build.gitEvent.context,
       description: 'Build ' + buildStatus + '...'
-    }).catch(function (err) {
+    };
+
+    // POST to github
+    github.repos.createStatus(githubData).catch(function (err) {
       console.log(err);
       context.fail(data);
     });
