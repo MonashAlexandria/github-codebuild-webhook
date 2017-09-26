@@ -50,8 +50,12 @@ module.exports.start_build_proxy = (event, context, callback) => {
       delete body.head_commit.added;
       delete body.head_commit.removed;
       delete body.head_commit.modified;
+      body.head_commit = cleanMessage(body.head_commit);
+
       const commits = body.commits;
-      const firstCommit = commits[0];
+      let firstCommit = commits[0];
+
+      firstCommit = cleanMessage(firstCommit);
       delete firstCommit.added;
       delete firstCommit.removed;
       delete firstCommit.modified;
@@ -681,4 +685,11 @@ class Pr extends GithubBuild{
     });
   }
 
+}
+
+function cleanMessage(commit) {
+  if(typeof commit.message !== 'undefined' && commit.message.length > 500) {
+    commit.message = commit.message.substring(0, 499);
+  }
+  return commit;
 }
