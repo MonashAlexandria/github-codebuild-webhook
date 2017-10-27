@@ -414,7 +414,7 @@ class GithubBuild {
 
     // deploy and run all tests on release and master
     // ignore any commands we get
-    if(branch === "release" || branch || "master") {
+    if(branch === "release" || branch === "master") {
       console.log("deploy and run all tests on release and master");
       tests.push({
         name: "js-php",
