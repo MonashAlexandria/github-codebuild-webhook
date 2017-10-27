@@ -361,39 +361,108 @@ class GithubBuild {
   getTests() {
     let tests = [];
     const branch = this.getBranch();
+    const skipRegex = new RegExp(/.*\[skip ([a-z]+)].*/gm);
     const forceRegex = new RegExp(/.*\[force ([a-z]+)([\s][^\]]+)?].*/gm);
     const commitMsg = this.getCommitMsg();
-    const matches = forceRegex.exec(commitMsg);
-    console.log(matches);
+    let matches;
     let forceCommand = null;
     let forceTest = null;
-    if (matches !== null && matches.length >= 2 && ('push' === this.getEventType() || 'api' === this.getEventType())) {
-      forceCommand = matches[1];
-      forceTest = matches.length >= 3 ? matches[2] : null;
+    let handleForceCommands = this.getEventType() === 'pr';
+    let skipDeployment = false;
+    let skipUnittests = false;
+
+    // parse [skip <argument>]
+    while ((matches = skipRegex.exec(commitMsg)) !== null) {
+      if (matches.length < 2)
+        continue;
+
+      switch (matches[1]) {
+        case "unit-tests":
+          skipUnittests = true;
+          break;
+        case "deployment":
+          skipDeployment = true;
+          break;
+        default:
+          // ignore any other arguments
+      }
+    }
+
+    // parse [force <command> <argument]
+    while ((matches = forceRegex.exec(commitMsg)) !== null) {
+      if (matches.length < 2)
+        continue;
+
+      switch (matches[1]) {
+        case "uat":
+          forceCommand = matches[1];
+          forceTest = matches.length >= 3 ? matches[2] : null;
+          break;
+        case "push":
+        case "pr":
+          if (this.getEventType() === matches[1]) {
+            handleForceCommands = true;
+          }
+
+          break;
+        default:
+          // ignore any other arguments
+
+      }
     }
     console.log(forceCommand, forceTest);
 
-    tests.push({
-      name: "js-php",
-      type: "unit-tests",
-      deployable: false
-    });
+    // deploy and run all tests on release and master
+    // ignore any commands we get
+    if(branch === "release" || branch || "master") {
+      console.log("deploy and run all tests on release and master");
+      tests.push({
+        name: "js-php",
+        type: "unit-tests",
+        deployable: false
+      });
+      tests.push({
+        name: "backend",
+        type: "uat",
+        deployable: true
+      });
 
-    if(branch === "release" || forceCommand === "uat" || this.enableUatAndFunctionalTests()) {
+      tests.push({
+        name: "frontend",
+        type: "uat",
+        deployable: false
+      });
 
-      if(forceCommand === 'uat') {
+      tests.push({
+        name: "functional",
+        type: "functional",
+        deployable: false
+      });
+    } else {
+
+      // run unit-tests only if there is no skip command
+      if (!skipUnittests) {
+        tests.push({
+          name: "js-php",
+          type: "unit-tests",
+          deployable: false
+        });
+      }
+
+      // only run UAT on specified event type (e.g. [force push])
+      if(handleForceCommands && forceCommand === "uat") {
 
         if(typeof forceTest !== 'undefined' && forceTest !== null) {
           tests.push({
             name: forceTest.trim(),
             type: "uat",
-            deployable: true
+            deployable: !skipDeployment
           });
         } else {
           tests.push({
             name: "backend",
             type: "uat",
-            deployable: true
+            deployable: !skipDeployment
           });
 
           tests.push({
@@ -402,25 +471,6 @@ class GithubBuild {
             deployable: false
           });
         }
-
-      } else {
-        tests.push({
-          name: "backend",
-          type: "uat",
-          deployable: true
-        });
-
-        tests.push({
-          name: "frontend",
-          type: "uat",
-          deployable: false
-        });
-
-        tests.push({
-          name: "functional",
-          type: "functional",
-          deployable: false
-        });
       }
     }
 
