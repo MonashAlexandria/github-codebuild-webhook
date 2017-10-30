@@ -361,8 +361,8 @@ class GithubBuild {
   getTests() {
     let tests = [];
     const branch = this.getBranch();
-    const skipRegex = new RegExp(/.*\[skip ([a-z]+)].*/gm);
-    const forceRegex = new RegExp(/.*\[force ([a-z]+)([\s][^\]]+)?].*/gm);
+    const skipRegex = new RegExp(/\[skip ([a-z]+)\]/gm);
+    const forceRegex = new RegExp(/\[force ([a-z]+)([\s][^\]]+)?\]/gm);
     const commitMsg = this.getCommitMsg();
     let matches;
     let forceCommand = null;
