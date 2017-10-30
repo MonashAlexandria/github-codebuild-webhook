@@ -410,7 +410,7 @@ class GithubBuild {
 
       }
     }
-    console.log(forceCommand, forceTest);
+    console.log(forceCommand, forceTest, handleForceCommands, branch, commitMsg);
 
     // deploy and run all tests on release and master
     // ignore any commands we get
@@ -671,6 +671,7 @@ class Pr extends GithubBuild{
   constructor(event){
     super(event);
     this.timeOutId = -1;
+    this.commitMsg = "";
   }
 
   getCommitSha(){
@@ -690,7 +691,7 @@ class Pr extends GithubBuild{
   }
 
   getCommitMsg() {
-    return "";
+    return this.commitMsg;
   }
 
   getSlackMsg() {
@@ -721,17 +722,31 @@ class Pr extends GithubBuild{
 
   buildable(){
     return new Promise((resolve, reject) => {
-      github.pullRequests.get({
-        owner: this.event.repository.owner.login,
-        repo: this.event.repository.name,
-        number: this.event.pull_request.number
-      }).then(pr => {
+      Promise.all([
+        github.pullRequests.get({
+          owner: this.event.repository.owner.login,
+          repo: this.event.repository.name,
+          number: this.event.pull_request.number
+        }),
+
+        github.gitdata.getCommit({
+          owner: this.event.repository.owner.login,
+          repo: this.event.repository.name,
+          sha: this.getCommitSha()
+        })
+      ]).then(results => {
+        const pr = results[0];
+        const commit = results[1];
+
+        this.commitMsg = commit.data.message;
+
         console.log('mergeability', pr.data.mergeable);
         const mergeability = pr.data.mergeable;
         resolve(mergeability);
       }).catch(err => {
+        console.log(err);
         reject(null);
-      })
+      });
     });
   }
 
