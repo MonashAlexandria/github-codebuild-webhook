@@ -459,7 +459,7 @@ class GithubBuild {
   }
 
   enableUatAndFunctionalTests() {
-    const regex = new RegExp(/\[on (push|pr)\]/i);
+    const regex = new RegExp(/\[on (push|pr)\]/gm);
     let matches;
     let commands = 0;
 
