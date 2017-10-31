@@ -358,59 +358,27 @@ class GithubBuild {
     ]
   }
 
+  getForceCommand() {
+    // parse [force uat|functional <argument1> ... <argumentN>]
+    const commandRegex = new RegExp(/\[force (uat|functional)(\s[^\]]+)?]/i);
+    let matches = commandRegex.exec(this.getCommitMsg());
+
+    if (matches === null || matches.length < 3) {
+      return null;
+    }
+
+    return [
+      // matched "uat" or "functional"
+      matches[1],
+
+      // matched argument
+      matches[2]
+    ];
+  }
+
   getTests() {
     let tests = [];
     const branch = this.getBranch();
-    const skipRegex = new RegExp(/\[skip ([a-z]+)\]/gm);
-    const forceRegex = new RegExp(/\[force ([a-z]+)([\s][^\]]+)?\]/gm);
-    const commitMsg = this.getCommitMsg();
-    let matches;
-    let forceCommand = null;
-    let forceTest = null;
-    let handleForceCommands = this.getEventType() === 'pr';
-    let skipDeployment = false;
-    let skipUnittests = false;
-
-    // parse [skip <argument>]
-    while ((matches = skipRegex.exec(commitMsg)) !== null) {
-      if (matches.length < 2)
-        continue;
-
-      switch (matches[1]) {
-        case "unit-tests":
-          skipUnittests = true;
-          break;
-        case "deployment":
-          skipDeployment = true;
-          break;
-        default:
-          // ignore any other arguments
-      }
-    }
-
-    // parse [force <command> <argument]
-    while ((matches = forceRegex.exec(commitMsg)) !== null) {
-      if (matches.length < 2)
-        continue;
-
-      switch (matches[1]) {
-        case "uat":
-          forceCommand = matches[1];
-          forceTest = matches.length >= 3 ? matches[2] : null;
-          break;
-        case "push":
-        case "pr":
-          if (this.getEventType() === matches[1]) {
-            handleForceCommands = true;
-          }
-
-          break;
-        default:
-          // ignore any other arguments
-
-      }
-    }
-    console.log(forceCommand, forceTest, handleForceCommands, branch, commitMsg);
 
     // deploy and run all tests on release and master
     // ignore any commands we get
@@ -439,9 +407,16 @@ class GithubBuild {
         deployable: false
       });
     } else {
+      const commitMsg = this.getCommitMsg();
+      const forceCommand = this.getForceCommand();
+
+      const skipDeployment = commitMsg.indexOf("[skip deployment]") !== -1;
+      const skipUnitTests = commitMsg.indexOf("[skip unit-tests]") !== -1;
+
+      console.log(commitMsg, forceCommand, skipDeployment, skipUnitTests);
 
       // run unit-tests only if there is no skip command
-      if (!skipUnittests) {
+      if (!skipUnitTests) {
         tests.push({
           name: "js-php",
           type: "unit-tests",
@@ -449,16 +424,22 @@ class GithubBuild {
         });
       }
 
-      // only run UAT on specified event type (e.g. [force push])
-      if(handleForceCommands && forceCommand === "uat") {
+      // only run UAT on specified event type (e.g. [on push])
+      if(forceCommand && this.enableUatAndFunctionalTests()) {
+        const forceUATArgument = forceCommand[1];
 
-        if(typeof forceTest !== 'undefined' && forceTest !== null) {
+        if(typeof forceUATArgument !== "undefined") {
           tests.push({
-            name: forceTest.trim(),
+            name: forceUATArgument,
             type: "uat",
             deployable: !skipDeployment
           });
         } else {
+          tests.push({
+            name: "functional",
+            type: "functional",
+            deployable: false
+          });
           tests.push({
             name: "backend",
             type: "uat",
@@ -477,8 +458,26 @@ class GithubBuild {
     return tests;
   }
 
-  enableUatAndFunctionalTests(){
-    return false;
+  enableUatAndFunctionalTests() {
+    const regex = new RegExp(/\[on (push|pr)\]/i);
+    let matches;
+    let commands = 0;
+
+    while ((matches = regex.exec(this.getCommitMsg())) !== null) {
+      if (matches.length < 2)
+        continue;
+
+      console.log(matches[0]);
+
+      ++commands;
+
+      if (matches[1] === this.getEventType())
+        return true;
+    }
+
+    // if there are no commands, fallback to default to
+    // enable tests on pr
+    return commands === 0 && 'pr' === this.getEventType();
   }
 
   getBuildTasks(){
@@ -704,10 +703,6 @@ class Pr extends GithubBuild{
 
   getAuthor() {
     return this.event.pull_request.user.login;
-  }
-
-  enableUatAndFunctionalTests(){
-    return this.event.pull_request.base.ref === "release";
   }
 
   getEnvVariables(){
