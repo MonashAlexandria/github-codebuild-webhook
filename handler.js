@@ -358,42 +358,92 @@ class GithubBuild {
     ]
   }
 
+  getForceCommand() {
+    // parse [force uat|functional <argument1> ... <argumentN>]
+    const commandRegex = new RegExp(/\[force (uat|functional)(\s[^\]]+)?]/i);
+    let matches = commandRegex.exec(this.getCommitMsg());
+
+    if (matches === null || matches.length < 3) {
+      return null;
+    }
+
+    return [
+      // matched "uat" or "functional"
+      matches[1],
+
+      // matched argument
+      matches[2]
+    ];
+  }
+
   getTests() {
     let tests = [];
     const branch = this.getBranch();
-    const forceRegex = new RegExp(/.*\[force ([a-z]+)([\s][^\]]+)?].*/gm);
-    const commitMsg = this.getCommitMsg();
-    const matches = forceRegex.exec(commitMsg);
-    console.log(matches);
-    let forceCommand = null;
-    let forceTest = null;
-    if (matches !== null && matches.length >= 2 && ('push' === this.getEventType() || 'api' === this.getEventType())) {
-      forceCommand = matches[1];
-      forceTest = matches.length >= 3 ? matches[2] : null;
-    }
-    console.log(forceCommand, forceTest);
 
-    tests.push({
-      name: "js-php",
-      type: "unit-tests",
-      deployable: false
-    });
+    // deploy and run all tests on release
+    // ignore any commands we get
+    if(branch === "release") {
+      console.log("deploy and run all tests on release");
+      tests.push({
+        name: "js-php",
+        type: "unit-tests",
+        deployable: false
+      });
+      tests.push({
+        name: "backend",
+        type: "uat",
+        deployable: true
+      });
 
-    if(branch === "release" || forceCommand === "uat" || this.enableUatAndFunctionalTests()) {
+      tests.push({
+        name: "frontend",
+        type: "uat",
+        deployable: false
+      });
 
-      if(forceCommand === 'uat') {
+      tests.push({
+        name: "functional",
+        type: "functional",
+        deployable: false
+      });
+    } else {
+      const commitMsg = this.getCommitMsg();
+      const forceCommand = this.getForceCommand();
 
-        if(typeof forceTest !== 'undefined' && forceTest !== null) {
+      const skipDeployment = commitMsg.indexOf("[skip deployment]") !== -1;
+      const skipUnitTests = commitMsg.indexOf("[skip unit-tests]") !== -1;
+
+      console.log(commitMsg, forceCommand, skipDeployment, skipUnitTests);
+
+      // run unit-tests only if there is no skip command
+      if (!skipUnitTests) {
+        tests.push({
+          name: "js-php",
+          type: "unit-tests",
+          deployable: false
+        });
+      }
+
+      // only run UAT on specified event type (e.g. [on push])
+      if(forceCommand && this.enableUatAndFunctionalTests()) {
+        const forceUATArgument = forceCommand[1];
+
+        if(typeof forceUATArgument !== "undefined") {
           tests.push({
-            name: forceTest.trim(),
+            name: forceUATArgument,
             type: "uat",
-            deployable: true
+            deployable: !skipDeployment
           });
         } else {
           tests.push({
+            name: "functional",
+            type: "functional",
+            deployable: false
+          });
+          tests.push({
             name: "backend",
             type: "uat",
-            deployable: true
+            deployable: !skipDeployment
           });
 
           tests.push({
@@ -402,33 +452,32 @@ class GithubBuild {
             deployable: false
           });
         }
-
-      } else {
-        tests.push({
-          name: "backend",
-          type: "uat",
-          deployable: true
-        });
-
-        tests.push({
-          name: "frontend",
-          type: "uat",
-          deployable: false
-        });
-
-        tests.push({
-          name: "functional",
-          type: "functional",
-          deployable: false
-        });
       }
     }
 
     return tests;
   }
 
-  enableUatAndFunctionalTests(){
-    return false;
+  enableUatAndFunctionalTests() {
+    const regex = new RegExp(/\[on (push|pr)\]/gm);
+    let matches;
+    let commands = 0;
+
+    while ((matches = regex.exec(this.getCommitMsg())) !== null) {
+      if (matches.length < 2)
+        continue;
+
+      console.log(matches[0]);
+
+      ++commands;
+
+      if (matches[1] === this.getEventType())
+        return true;
+    }
+
+    // if there are no commands, fallback to default to
+    // enable tests on pr
+    return commands === 0 && 'pr' === this.getEventType();
   }
 
   getBuildTasks(){
@@ -621,6 +670,7 @@ class Pr extends GithubBuild{
   constructor(event){
     super(event);
     this.timeOutId = -1;
+    this.commitMsg = "";
   }
 
   getCommitSha(){
@@ -640,7 +690,7 @@ class Pr extends GithubBuild{
   }
 
   getCommitMsg() {
-    return "";
+    return this.commitMsg;
   }
 
   getSlackMsg() {
@@ -655,10 +705,6 @@ class Pr extends GithubBuild{
     return this.event.pull_request.user.login;
   }
 
-  enableUatAndFunctionalTests(){
-    return this.event.pull_request.base.ref === "release";
-  }
-
   getEnvVariables(){
     let envVariables = super.getEnvVariables();
     envVariables.push({
@@ -671,17 +717,31 @@ class Pr extends GithubBuild{
 
   buildable(){
     return new Promise((resolve, reject) => {
-      github.pullRequests.get({
-        owner: this.event.repository.owner.login,
-        repo: this.event.repository.name,
-        number: this.event.pull_request.number
-      }).then(pr => {
+      Promise.all([
+        github.pullRequests.get({
+          owner: this.event.repository.owner.login,
+          repo: this.event.repository.name,
+          number: this.event.pull_request.number
+        }),
+
+        github.gitdata.getCommit({
+          owner: this.event.repository.owner.login,
+          repo: this.event.repository.name,
+          sha: this.getCommitSha()
+        })
+      ]).then(results => {
+        const pr = results[0];
+        const commit = results[1];
+
+        this.commitMsg = commit.data.message;
+
         console.log('mergeability', pr.data.mergeable);
         const mergeability = pr.data.mergeable;
         resolve(mergeability);
       }).catch(err => {
+        console.log(err);
         reject(null);
-      })
+      });
     });
   }
 
