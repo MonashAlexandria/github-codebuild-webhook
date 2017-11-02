@@ -380,10 +380,12 @@ class GithubBuild {
     let tests = [];
     const branch = this.getBranch();
 
-    // deploy and run all tests on release
-    // ignore any commands we get
-    // Run on release if push, or pr to release
-    if(branch === "release" || this.enableUatAndFunctionalTests()) {
+    if(branch === "release") {
+      // no need to run tests when pushing to release
+      // should be only the case when merging a PR on release
+    } else if (this.enableUatAndFunctionalTests()) {
+      // Only enabled for PR against release
+
       console.log("deploy and run all tests on release");
       tests.push({
         name: "js-php",
@@ -425,8 +427,8 @@ class GithubBuild {
         });
       }
 
-      // only run UAT on specified event type (e.g. [on push])
-      if(forceCommand && this.enableUatAndFunctionalTests()) {
+      // check if there is a forcecommand and if we have enabled them
+      if(forceCommand && this.enableForceUATCommands()) {
         const forceUATArgument = forceCommand[1];
 
         if(typeof forceUATArgument !== "undefined") {
@@ -460,6 +462,10 @@ class GithubBuild {
   }
 
   enableUatAndFunctionalTests() {
+    return false;
+  }
+
+  enableForceUATCommands() {
     const regex = new RegExp(/\[on (push|pr)\]/gm);
     let matches;
     let commands = 0;
@@ -476,8 +482,8 @@ class GithubBuild {
         return true;
     }
 
-    // if there are no commands, fallback to default to
-    // enable tests on pr
+    // if there are no commands, fallback to default:
+    // enable force commands on pr only
     return commands === 0 && 'pr' === this.getEventType();
   }
 
@@ -718,7 +724,6 @@ class Pr extends GithubBuild{
   enableUatAndFunctionalTests() {
     return this.event.pull_request.base.ref === "release";
   }
-
 
   buildable(){
     return new Promise((resolve, reject) => {
