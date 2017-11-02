@@ -382,7 +382,8 @@ class GithubBuild {
 
     // deploy and run all tests on release
     // ignore any commands we get
-    if(branch === "release") {
+    // Run on release if push, or pr to release
+    if(branch === "release" || this.enableUatAndFunctionalTests()) {
       console.log("deploy and run all tests on release");
       tests.push({
         name: "js-php",
@@ -712,6 +713,10 @@ class Pr extends GithubBuild{
       value: this.event.pull_request.number.toString()
     });
     return envVariables;
+  }
+
+  enableUatAndFunctionalTests() {
+    return this.event.pull_request.base.ref === "release";
   }
 
 
