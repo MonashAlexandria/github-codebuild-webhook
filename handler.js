@@ -360,7 +360,7 @@ class GithubBuild {
 
   getForceCommand() {
     // parse [force uat|functional <argument1> ... <argumentN>]
-    const commandRegex = new RegExp(/\[force (uat|functional)(\s[^\]]+)?]/i);
+    const commandRegex = new RegExp(/^.*\[force (uat|functional)(\s[^\]]+)?]/i);
     let matches = commandRegex.exec(this.getCommitMsg());
 
     if (matches === null || matches.length < 3) {
@@ -380,7 +380,12 @@ class GithubBuild {
     let tests = [];
     const branch = this.getBranch();
 
-    if(branch === "release") {
+    if(branch === "release" || branch === "master") {
+      tests.push({
+        name: "js-php",
+        type: "unit-tests",
+        deployable: false
+      });
       // no need to run tests when pushing to release
       // should be only the case when merging a PR on release
     } else if (this.enableUatAndFunctionalTests()) {
@@ -412,7 +417,6 @@ class GithubBuild {
     } else {
       const commitMsg = this.getCommitMsg();
       const forceCommand = this.getForceCommand();
-
       const skipDeployment = commitMsg.indexOf("[skip deployment]") !== -1;
       const skipUnitTests = commitMsg.indexOf("[skip unit-tests]") !== -1;
 
@@ -429,20 +433,16 @@ class GithubBuild {
 
       // check if there is a forcecommand and if we have enabled them
       if(forceCommand && this.enableForceUATCommands()) {
-        const forceUATArgument = forceCommand[1];
+        const forceType = forceCommand[0];
+        const forceArgument = forceCommand[1];
 
-        if(typeof forceUATArgument !== "undefined") {
+        if(typeof forceArgument !== "undefined") {
           tests.push({
-            name: forceUATArgument,
-            type: "uat",
+            name: forceArgument.trim(),
+            type: forceType,
             deployable: !skipDeployment
           });
-        } else {
-          tests.push({
-            name: "functional",
-            type: "functional",
-            deployable: false
-          });
+        } else if (forceType === "uat") {
           tests.push({
             name: "backend",
             type: "uat",
@@ -453,6 +453,18 @@ class GithubBuild {
             name: "frontend",
             type: "uat",
             deployable: false
+          });
+
+          tests.push({
+            name: "functional",
+            type: "functional",
+            deployable: false
+          });
+        } else if (forceType === "functional") {
+          tests.push({
+            name: "functional",
+            type: "functional",
+            deployable: !skipDeployment
           });
         }
       }
@@ -672,12 +684,14 @@ class GithubBuild {
   }
 }
 
+module.exports.GithubBuild = GithubBuild;
+
 class Pr extends GithubBuild{
 
-  constructor(event){
+  constructor(event, commitMsg = ""){
     super(event);
     this.timeOutId = -1;
-    this.commitMsg = "";
+    this.commitMsg = commitMsg;
   }
 
   getCommitSha(){
@@ -756,6 +770,8 @@ class Pr extends GithubBuild{
   }
 
 }
+
+module.exports.Pr = Pr;
 
 function cleanMessage(commit) {
   if(typeof commit.message !== 'undefined' && commit.message.length > 500) {

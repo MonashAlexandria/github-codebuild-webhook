@@ -1,8 +1,14 @@
 {
   "name": "github-codebuild-webhook",
   "version": "0.0.1",
+  "babel": {
+    "presets": [
+      "es2015"
+    ]
+  },
   "dependencies": {
     "aws-sdk": "^2.40.0",
+    "babel-cli": "^6.26.0",
     "bluebird": "^3.5.0",
     "github": "^9.2.0",
     "node-fetch": "^1.7.2",
@@ -10,6 +16,7 @@
   },
   "devDependencies": {
     "ava": "^0.23.0",
+    "babel-preset-es2015": "^6.24.1",
     "serverless": "^1.12.1",
     "serverless-parameters": "^0.0.3",
     "serverless-portable-templates": "file:plugins/serverless-portable-templates",
@@ -21,6 +28,6 @@
     "git": "https://github.com/svdgraaf/github-codebuild-webhook"
   },
   "scripts": {
-    "test": "ava"
+    "test": "ava tests/*.js"
   }
 }
