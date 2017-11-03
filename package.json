@@ -9,6 +9,7 @@
     "time-stamp": "^2.0.0"
   },
   "devDependencies": {
+    "ava": "^0.23.0",
     "serverless": "^1.12.1",
     "serverless-parameters": "^0.0.3",
     "serverless-portable-templates": "file:plugins/serverless-portable-templates",
@@ -18,5 +19,8 @@
   "license": "MIT",
   "repository": {
     "git": "https://github.com/svdgraaf/github-codebuild-webhook"
+  },
+  "scripts": {
+    "test": "ava"
   }
 }
