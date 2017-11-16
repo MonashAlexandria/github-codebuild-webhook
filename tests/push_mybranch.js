@@ -97,7 +97,8 @@ test(push, "mybranch", [
 
 test(push, "mybranch", [
   "[force uat][on push]",
-  "[force uat][on push][on pr]"
+  "[force uat][on push][on pr]",
+  "Should work with multilines\n[force uat][on push]"
 ], [
   unittests(),
   uat_deployable("backend"),

@@ -100,7 +100,8 @@ test(pr, "release", "master", [
 test(pr, "release", "master", [
   "[force uat]",
   "[force uat][on pr]",
-  "[force uat][on pr][on push]"
+  "[force uat][on pr][on push]",
+  "Should work with multilines\n[force uat]"
 ], [
   unittests(),
   uat_deployable("backend"),

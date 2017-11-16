@@ -360,7 +360,7 @@ class GithubBuild {
 
   getForceCommand() {
     // parse [force uat|functional <argument1> ... <argumentN>]
-    const commandRegex = new RegExp(/^.*\[force (uat|functional)(\s[^\]]+)?]/i);
+    const commandRegex = new RegExp(/^.*\[force (uat|functional)(\s[^\]]+)?\]/m);
     let matches = commandRegex.exec(this.getCommitMsg());
 
     if (matches === null || matches.length < 3) {
