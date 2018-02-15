@@ -7,7 +7,7 @@ plugins:
   - serverless-pseudo-parameters
 
 custom:
-  githubStatusContext: codebuild-ci
+  githubStatusContext: codebuild-ci-2
 
 provider:
   name: aws
@@ -23,11 +23,11 @@ provider:
     - Effect: "Allow"
       Action:
         - codebuild:*
-      Resource: "arn:aws:codebuild:#{AWS::Region}:#{AWS::AccountId}:project/Alexandria"
+      Resource: arn:aws:codebuild:#{AWS::Region}:#{AWS::AccountId}:project/${file(serverless.env.yml):${self:provider.stage}.BUILD_PROJECT}
     - Effect: "Allow"
       Action:
         - kms:*
-      Resource: "arn:aws:kms:#{AWS::Region}:#{AWS::AccountId}:key/*"
+      Resource: ${file(serverless.env.yml):${self:provider.stage}.KMS_KEY_ARN}
 
 
 
