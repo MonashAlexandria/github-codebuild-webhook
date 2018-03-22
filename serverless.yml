@@ -1,4 +1,4 @@
-service: Alexandria-codebuild-github-webhook-2
+service: Alexandria-codebuild-github-webhook
 
 plugins:
   - serverless-step-functions
