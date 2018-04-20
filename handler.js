@@ -11,7 +11,7 @@ const https = require('https');
 const util = require('util');
 const fetch = require('node-fetch');
 
-let GitHubApi = require("github");
+let GitHubApi = require("@octokit/rest");
 let github = new GitHubApi();
 const BUILD_ACTIONS = [
   "opened",
@@ -360,7 +360,7 @@ class GithubBuild {
 
   getForceCommand() {
     // parse [force uat|functional <argument1> ... <argumentN>]
-    const commandRegex = new RegExp(/^.*\[force (uat|functional)(\s[^\]]+)?\]/m);
+    const commandRegex = new RegExp(/^.*\[force (uat|functional|deployment)(\s[^\]]+)?\]/m);
     let matches = commandRegex.exec(this.getCommitMsg());
 
     if (matches === null || matches.length < 3) {
@@ -368,7 +368,7 @@ class GithubBuild {
     }
 
     return [
-      // matched "uat" or "functional"
+      // matched "uat", "functional" or "deployment"
       matches[1],
 
       // matched argument
@@ -400,7 +400,7 @@ class GithubBuild {
       tests.push({
         name: "backend",
         type: "uat",
-        deployable: true
+        deployable: false
       });
 
       tests.push({
@@ -419,7 +419,7 @@ class GithubBuild {
       const forceCommand = this.getForceCommand();
       const skipDeployment = commitMsg.indexOf("[skip deployment]") !== -1;
       const skipUnitTests = commitMsg.indexOf("[skip unit-tests]") !== -1;
-
+      const forceType = forceCommand?forceCommand[0]:null;
       console.log(commitMsg, forceCommand, skipDeployment, skipUnitTests);
 
       // run unit-tests only if there is no skip command
@@ -433,20 +433,27 @@ class GithubBuild {
 
       // check if there is a forcecommand and if we have enabled them
       if(forceCommand && this.enableForceUATCommands()) {
-        const forceType = forceCommand[0];
         const forceArgument = forceCommand[1];
+
+          if (forceType && !skipDeployment && (forceType === "deployment" || forceType === "functional"  || forceType === "uat")) {
+              tests.push({
+                  name: "deployment",
+                  type: "deployment",
+                  deployable: true
+              });
+          }
 
         if(typeof forceArgument !== "undefined") {
           tests.push({
             name: forceArgument.trim(),
             type: forceType,
-            deployable: !skipDeployment
+            deployable: false
           });
         } else if (forceType === "uat") {
           tests.push({
             name: "backend",
             type: "uat",
-            deployable: !skipDeployment
+            deployable: false
           });
 
           tests.push({
@@ -464,7 +471,7 @@ class GithubBuild {
           tests.push({
             name: "functional",
             type: "functional",
-            deployable: !skipDeployment
+            deployable: false
           });
         }
       }

@@ -3,14 +3,14 @@
   "version": "0.0.1",
   "babel": {
     "presets": [
-      "es2015"
+      "env"
     ]
   },
   "dependencies": {
     "aws-sdk": "^2.40.0",
     "babel-cli": "^6.26.0",
     "bluebird": "^3.5.0",
-    "github": "^9.2.0",
+    "@octokit/rest": "^15.2.0",
     "node-fetch": "^1.7.2",
     "time-stamp": "^2.0.0"
   },

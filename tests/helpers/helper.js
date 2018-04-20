@@ -1,11 +1,19 @@
 let { GithubBuild, Pr } = require('../../handler.js');
 
-function unittests() {
+function unittests(deployable = false) {
   return {
-    deployable: false,
+    deployable: deployable,
     name: 'js-php',
     type: 'unit-tests'    
   };
+};
+
+function unittests_deployable() {
+    return {
+        deployable: deployable,
+        name: 'functional',
+        type: 'functional'
+    };
 };
 
 function uat(name, deployable = false) {
@@ -16,8 +24,16 @@ function uat(name, deployable = false) {
   };
 }
 
+function deployment(){
+    return {
+        deployable: true,
+        name: 'deployment',
+        type: 'deployment'
+    };
+}
+
 function uat_deployable(name) {
-  return uat(name, true);
+  return uat(name, false);
 }
 
 function functional(name = "functional", deployable = false) {
@@ -29,7 +45,7 @@ function functional(name = "functional", deployable = false) {
 }
 
 function functional_deployable(name = "functional") {
-  return functional(name, true);
+  return functional(name, false);
 }
 
 function push(t, branch, commitMsg, expectedTests) {
@@ -96,6 +112,7 @@ module.exports = {
   unittests,
   functional,
   functional_deployable,
+  deployment,
   uat,
   uat_deployable
 };

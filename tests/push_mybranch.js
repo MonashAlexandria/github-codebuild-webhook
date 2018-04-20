@@ -3,6 +3,7 @@ let {
   push,
   unittests,
   functional_deployable,
+  deployment,
   functional,
   uat,
   uat_deployable
@@ -40,6 +41,7 @@ test(push, "mybranch", [
   "[force functional][on push][on pr]"
 ], [
   unittests(),
+  deployment(),
   functional_deployable()
 ]);
 
@@ -48,6 +50,7 @@ test(push, "mybranch", [
   "[force functional f.php][on push][on pr]"
 ], [
   unittests(),
+  deployment(),
   functional_deployable("f.php")
 ]);
 
@@ -55,6 +58,7 @@ test(push, "mybranch", [
   "[skip unit-tests][force functional][on push]",
   "[skip unit-tests][force functional][on push][on pr]"
 ], [
+  deployment(),
   functional_deployable()
 ]);
 
@@ -62,6 +66,7 @@ test(push, "mybranch", [
   "[skip unit-tests][force functional f.php][on push]",
   "[skip unit-tests][force functional f.php][on push][on pr]"
 ], [
+  deployment(),
   functional_deployable("f.php")
 ]);
 
@@ -101,6 +106,7 @@ test(push, "mybranch", [
   "Should work with multilines\n[force uat][on push]"
 ], [
   unittests(),
+  deployment(),
   uat_deployable("backend"),
   uat("frontend"),
   functional()
@@ -111,6 +117,7 @@ test(push, "mybranch", [
   "[force uat uat.php][on push][on pr]"
 ], [
   unittests(),
+  deployment(),
   uat_deployable("uat.php")
 ]);
 
@@ -118,6 +125,7 @@ test(push, "mybranch", [
   "[skip unit-tests][force uat][on push]",
   "[skip unit-tests][force uat][on push][on pr]"
 ], [
+  deployment(),
   uat_deployable("backend"),
   uat("frontend"),
   functional()
@@ -127,6 +135,7 @@ test(push, "mybranch", [
   "[skip unit-tests][force uat uat.php][on push]",
   "[skip unit-tests][force uat uat.php][on push][on pr]"
 ], [
+  deployment(),
   uat_deployable("uat.php")
 ]);
 
@@ -170,5 +179,6 @@ test(push, "mybranch", [
 ], [
   // consider only the last occurence of [force uat]
   unittests(),
+  deployment(),
   uat_deployable("uat.php")
 ]);

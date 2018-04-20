@@ -5,6 +5,7 @@ let {
   functional_deployable,
   functional,
   uat,
+  deployment,
   uat_deployable
 } = require('./helpers/helper.js');
 
@@ -34,6 +35,7 @@ test(pr, "release", "master", [
   "[force functional][on pr]",
   "[force functional][on pr][on push]"
 ], [
+  deployment(),
   unittests(),
   functional_deployable()
 ]);
@@ -43,6 +45,7 @@ test(pr, "release", "master", [
   "[force functional f.php][on pr]",
   "[force functional f.php][on pr][on push]"
 ], [
+  deployment(),
   unittests(),
   functional_deployable("f.php")
 ]);
@@ -52,6 +55,7 @@ test(pr, "release", "master", [
   "[skip unit-tests][force functional][on pr]",
   "[skip unit-tests][force functional][on pr][on push]"
 ], [
+  deployment(),
   functional_deployable()
 ]);
 
@@ -60,6 +64,7 @@ test(pr, "release", "master", [
   "[skip unit-tests][force functional f.php][on pr]",
   "[skip unit-tests][force functional f.php][on pr][on push]"
 ], [
+  deployment(),
   functional_deployable("f.php")
 ]);
 
@@ -103,6 +108,7 @@ test(pr, "release", "master", [
   "[force uat][on pr][on push]",
   "Should work with multilines\n[force uat]"
 ], [
+  deployment(),
   unittests(),
   uat_deployable("backend"),
   uat("frontend"),
@@ -114,6 +120,7 @@ test(pr, "release", "master", [
   "[force uat uat.php][on pr]",
   "[force uat uat.php][on pr][on push]"
 ], [
+  deployment(),
   unittests(),
   uat_deployable("uat.php")
 ]);
@@ -123,6 +130,7 @@ test(pr, "release", "master", [
   "[skip unit-tests][force uat][on pr]",
   "[skip unit-tests][force uat][on pr][on push]"
 ], [
+  deployment(),
   uat_deployable("backend"),
   uat("frontend"),
   functional()
@@ -133,6 +141,7 @@ test(pr, "release", "master", [
   "[skip unit-tests][force uat uat.php][on pr]",
   "[skip unit-tests][force uat uat.php][on pr][on push]"
 ], [
+  deployment(),
   uat_deployable("uat.php")
 ]);
 
@@ -180,6 +189,7 @@ test(pr, "release", "master", [
   "[force functional][force uat ignore.php][force uat uat.php][on pr][on push]"
 ], [
   // consider only the last occurence of [force uat]
+  deployment(),
   unittests(),
   uat_deployable("uat.php")
 ]);
