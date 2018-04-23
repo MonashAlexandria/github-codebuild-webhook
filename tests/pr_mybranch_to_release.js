@@ -3,9 +3,7 @@ let {
   pr,
   unittests,
   functional,
-  uat,
-  deployment,
-  uat_deployable
+  uat
 } = require('./helpers/helper.js');
 
 test(pr, "mybranch", "release", [
@@ -72,9 +70,8 @@ test(pr, "mybranch", "release", [
   "[force uat ignore.php][force uat uat.php][on pr]",
   "[force functional][force uat ignore.php][force uat uat.php][on pr][on push]"
 ], [
-  deployment(),
   unittests(),
-  uat_deployable("backend"),
+  uat("backend"),
   uat("frontend"),
   functional()
 ]);

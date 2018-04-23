@@ -8,14 +8,6 @@ function unittests(deployable = false) {
   };
 };
 
-function unittests_deployable() {
-    return {
-        deployable: deployable,
-        name: 'functional',
-        type: 'functional'
-    };
-};
-
 function uat(name, deployable = false) {
   return {
     name,
@@ -32,20 +24,12 @@ function deployment(){
     };
 }
 
-function uat_deployable(name) {
-  return uat(name, false);
-}
-
 function functional(name = "functional", deployable = false) {
   return {
     name,
     type: "functional",
     deployable
   };
-}
-
-function functional_deployable(name = "functional") {
-  return functional(name, false);
 }
 
 function push(t, branch, commitMsg, expectedTests) {
@@ -111,8 +95,6 @@ module.exports = {
   pr,
   unittests,
   functional,
-  functional_deployable,
   deployment,
-  uat,
-  uat_deployable
+  uat
 };

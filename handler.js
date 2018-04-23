@@ -419,7 +419,7 @@ class GithubBuild {
       const forceCommand = this.getForceCommand();
       const skipDeployment = commitMsg.indexOf("[skip deployment]") !== -1;
       const skipUnitTests = commitMsg.indexOf("[skip unit-tests]") !== -1;
-      const forceType = forceCommand?forceCommand[0]:null;
+
       console.log(commitMsg, forceCommand, skipDeployment, skipUnitTests);
 
       // run unit-tests only if there is no skip command
@@ -433,6 +433,7 @@ class GithubBuild {
 
       // check if there is a forcecommand and if we have enabled them
       if(forceCommand && this.enableForceUATCommands()) {
+        const forceType = forceCommand?forceCommand[0]:null;
         const forceArgument = forceCommand[1];
 
           if (forceType && !skipDeployment && (forceType === "deployment" || forceType === "functional"  || forceType === "uat")) {

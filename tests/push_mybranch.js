@@ -2,11 +2,9 @@ let { test } = require('ava');
 let {
   push,
   unittests,
-  functional_deployable,
-  deployment,
   functional,
-  uat,
-  uat_deployable
+  deployment,
+  uat
 } = require('./helpers/helper.js');
 
 test(push, "mybranch", [
@@ -42,7 +40,7 @@ test(push, "mybranch", [
 ], [
   unittests(),
   deployment(),
-  functional_deployable()
+  functional()
 ]);
 
 test(push, "mybranch", [
@@ -51,7 +49,7 @@ test(push, "mybranch", [
 ], [
   unittests(),
   deployment(),
-  functional_deployable("f.php")
+  functional("f.php")
 ]);
 
 test(push, "mybranch", [
@@ -59,7 +57,7 @@ test(push, "mybranch", [
   "[skip unit-tests][force functional][on push][on pr]"
 ], [
   deployment(),
-  functional_deployable()
+  functional()
 ]);
 
 test(push, "mybranch", [
@@ -67,7 +65,7 @@ test(push, "mybranch", [
   "[skip unit-tests][force functional f.php][on push][on pr]"
 ], [
   deployment(),
-  functional_deployable("f.php")
+  functional("f.php")
 ]);
 
 test(push, "mybranch", [
@@ -107,7 +105,7 @@ test(push, "mybranch", [
 ], [
   unittests(),
   deployment(),
-  uat_deployable("backend"),
+  uat("backend"),
   uat("frontend"),
   functional()
 ]);
@@ -118,7 +116,7 @@ test(push, "mybranch", [
 ], [
   unittests(),
   deployment(),
-  uat_deployable("uat.php")
+  uat("uat.php")
 ]);
 
 test(push, "mybranch", [
@@ -126,7 +124,7 @@ test(push, "mybranch", [
   "[skip unit-tests][force uat][on push][on pr]"
 ], [
   deployment(),
-  uat_deployable("backend"),
+  uat("backend"),
   uat("frontend"),
   functional()
 ]);
@@ -136,7 +134,7 @@ test(push, "mybranch", [
   "[skip unit-tests][force uat uat.php][on push][on pr]"
 ], [
   deployment(),
-  uat_deployable("uat.php")
+  uat("uat.php")
 ]);
 
 test(push, "mybranch", [
@@ -180,5 +178,5 @@ test(push, "mybranch", [
   // consider only the last occurence of [force uat]
   unittests(),
   deployment(),
-  uat_deployable("uat.php")
+  uat("uat.php")
 ]);

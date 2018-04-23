@@ -2,11 +2,9 @@ let { test } = require('ava');
 let {
   pr,
   unittests,
-  functional_deployable,
   functional,
   uat,
-  deployment,
-  uat_deployable
+  deployment
 } = require('./helpers/helper.js');
 
 test(pr, "mybranch", "master", [
@@ -37,7 +35,7 @@ test(pr, "mybranch", "master", [
 ], [
   unittests(),
   deployment(),
-  functional_deployable()
+  functional()
 ]);
 
 test(pr, "mybranch", "master", [
@@ -47,7 +45,7 @@ test(pr, "mybranch", "master", [
 ], [
   unittests(),
   deployment(),
-  functional_deployable("f.php")
+  functional("f.php")
 ]);
 
 test(pr, "mybranch", "master", [
@@ -56,7 +54,7 @@ test(pr, "mybranch", "master", [
   "[skip unit-tests][force functional][on pr][on push]"
 ], [
   deployment(),
-  functional_deployable()
+  functional()
 ]);
 
 test(pr, "mybranch", "master", [
@@ -65,7 +63,7 @@ test(pr, "mybranch", "master", [
   "[skip unit-tests][force functional f.php][on pr][on push]"
 ], [
   deployment(),
-  functional_deployable("f.php")
+  functional("f.php")
 ]);
 
 test(pr, "mybranch", "master", [
@@ -110,7 +108,7 @@ test(pr, "mybranch", "master", [
 ], [
   unittests(),
   deployment(),
-  uat_deployable("backend"),
+  uat("backend"),
   uat("frontend"),
   functional()
 ]);
@@ -122,7 +120,7 @@ test(pr, "mybranch", "master", [
 ], [
   unittests(),
   deployment(),
-  uat_deployable("uat.php")
+  uat("uat.php")
 ]);
 
 test(pr, "mybranch", "master", [
@@ -131,7 +129,7 @@ test(pr, "mybranch", "master", [
   "[skip unit-tests][force uat][on pr][on push]"
 ], [
   deployment(),
-  uat_deployable("backend"),
+  uat("backend"),
   uat("frontend"),
   functional()
 ]);
@@ -142,7 +140,7 @@ test(pr, "mybranch", "master", [
   "[skip unit-tests][force uat uat.php][on pr][on push]"
 ], [
   deployment(),
-  uat_deployable("uat.php")
+  uat("uat.php")
 ]);
 
 test(pr, "mybranch", "master", [
@@ -191,5 +189,5 @@ test(pr, "mybranch", "master", [
   // consider only the last occurence of [force uat]
   unittests(),
   deployment(),
-  uat_deployable("uat.php")
+  uat("uat.php")
 ]);
