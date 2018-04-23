@@ -1,8 +1,8 @@
 let { GithubBuild, Pr } = require('../../handler.js');
 
-function unittests(deployable = false) {
+function unittests() {
   return {
-    deployable: deployable,
+    deployable: false,
     name: 'js-php',
     type: 'unit-tests'    
   };
