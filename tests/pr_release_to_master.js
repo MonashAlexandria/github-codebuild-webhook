@@ -35,8 +35,8 @@ test(pr, "release", "master", [
   "[force functional][on pr]",
   "[force functional][on pr][on push]"
 ], [
-  deployment(),
   unittests(),
+  deployment(),
   functional_deployable()
 ]);
 
@@ -45,8 +45,8 @@ test(pr, "release", "master", [
   "[force functional f.php][on pr]",
   "[force functional f.php][on pr][on push]"
 ], [
-  deployment(),
   unittests(),
+  deployment(),
   functional_deployable("f.php")
 ]);
 
@@ -108,8 +108,8 @@ test(pr, "release", "master", [
   "[force uat][on pr][on push]",
   "Should work with multilines\n[force uat]"
 ], [
-  deployment(),
   unittests(),
+  deployment(),
   uat_deployable("backend"),
   uat("frontend"),
   functional()
@@ -120,8 +120,8 @@ test(pr, "release", "master", [
   "[force uat uat.php][on pr]",
   "[force uat uat.php][on pr][on push]"
 ], [
-  deployment(),
   unittests(),
+  deployment(),
   uat_deployable("uat.php")
 ]);
 
@@ -189,7 +189,7 @@ test(pr, "release", "master", [
   "[force functional][force uat ignore.php][force uat uat.php][on pr][on push]"
 ], [
   // consider only the last occurence of [force uat]
-  deployment(),
   unittests(),
+  deployment(),
   uat_deployable("uat.php")
 ]);
