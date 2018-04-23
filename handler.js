@@ -433,7 +433,7 @@ class GithubBuild {
 
       // check if there is a forcecommand and if we have enabled them
       if(forceCommand && this.enableForceUATCommands()) {
-        const forceType = forceCommand?forceCommand[0]:null;
+        const forceType = forceCommand[0];
         const forceArgument = forceCommand[1];
 
           if (forceType && !skipDeployment && (forceType === "deployment" || forceType === "functional"  || forceType === "uat")) {
