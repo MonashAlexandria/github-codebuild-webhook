@@ -376,108 +376,159 @@ class GithubBuild {
     ];
   }
 
-  getTests() {
-    let tests = [];
-    const branch = this.getBranch();
-
-    if(branch === "release" || branch === "master") {
-      tests.push({
+  checkForReleaseOrMasterBranches(branch) {
+    if (branch === "release" || branch === "master") {
+      return {
         name: "js-php",
         type: "unit-tests",
         deployable: false
-      });
-      // no need to run tests when pushing to release
-      // should be only the case when merging a PR on release
-    } else if (this.enableUatAndFunctionalTests()) {
-      // Only enabled for PR against release
+      };
+    }
+  }
 
-      console.log("deploy and run all tests on release");
-      tests.push({
-        name: "js-php",
-        type: "unit-tests",
-        deployable: false
-      });
-      tests.push({
-        name: "backend",
-        type: "uat",
-        deployable: false
-      });
-
-      tests.push({
-        name: "frontend",
-        type: "uat",
-        deployable: false
-      });
-
-      tests.push({
-        name: "functional",
-        type: "functional",
-        deployable: false
-      });
-    } else {
-      const commitMsg = this.getCommitMsg();
-      const forceCommand = this.getForceCommand();
-      const skipDeployment = commitMsg.indexOf("[skip deployment]") !== -1;
-      const skipUnitTests = commitMsg.indexOf("[skip unit-tests]") !== -1;
-
-      console.log(commitMsg, forceCommand, skipDeployment, skipUnitTests);
-
-      // run unit-tests only if there is no skip command
-      if (!skipUnitTests) {
-        tests.push({
+  checkForOtherBranchesOfUATFunctionalTestsEnabled(branch) {
+    if (branch !== "release" && branch !== "master" && this.enableUatAndFunctionalTests()) {
+      return [
+        {
           name: "js-php",
           type: "unit-tests",
+          deployable: false
+        },
+        {
+          name: "backend",
+          type: "uat",
+          deployable: false
+        },
+        {
+          name: "frontend",
+          type: "uat",
+          deployable: false
+        },
+        {
+          name: "functional",
+          type: "functional",
+          deployable: false
+        }
+      ]
+    }
+  }
+
+  checkForSkipUnitTestsCommand(commitMsg) {
+    const skipUnitTests = commitMsg.indexOf("[skip unit-tests]") !== -1;
+    if (!skipUnitTests) {
+      return {
+        name: "js-php",
+        type: "unit-tests",
+        deployable: false
+      };
+    }
+  }
+
+  checkForForceCommands(commitMsg) {
+    let forceCommandsTests = [];
+    const forceCommand = this.getForceCommand();
+    const skipDeployment = commitMsg.indexOf("[skip deployment]") !== -1;
+    if (this.getForceCommand() && this.enableForceUATCommands()) {
+      const forceType = forceCommand[0];
+      const forceArgument = forceCommand[1];
+
+      if (forceType && !skipDeployment && (forceType === "deployment" || forceType === "functional" || forceType === "uat")) {
+        forceCommandsTests.push({
+          name: "deployment",
+          type: "deployment",
+          deployable: true
+        });
+      }
+
+      if (typeof forceArgument !== "undefined") {
+        forceCommandsTests.push({
+          name: forceArgument.trim(),
+          type: forceType,
+          deployable: false
+        });
+      } else if (forceType === "uat") {
+        forceCommandsTests.push({
+          name: "backend",
+          type: "uat",
+          deployable: false
+        });
+
+        forceCommandsTests.push({
+          name: "frontend",
+          type: "uat",
+          deployable: false
+        });
+
+        forceCommandsTests.push({
+          name: "functional",
+          type: "functional",
+          deployable: false
+        });
+      } else if (forceType === "functional") {
+        forceCommandsTests.push({
+          name: "functional",
+          type: "functional",
           deployable: false
         });
       }
 
-      // check if there is a forcecommand and if we have enabled them
-      if(forceCommand && this.enableForceUATCommands()) {
-        const forceType = forceCommand[0];
-        const forceArgument = forceCommand[1];
+      return forceCommandsTests;
+    }
 
-          if (forceType && !skipDeployment && (forceType === "deployment" || forceType === "functional"  || forceType === "uat")) {
-              tests.push({
-                  name: "deployment",
-                  type: "deployment",
-                  deployable: true
-              });
+  }
+
+  checkForOtherBranchesOfUATFunctionalTestsNotEnabled(branch) {
+    let response = [];
+    if (branch !== "release" && branch !== "master" && !this.enableUatAndFunctionalTests()) {
+      const commitMsg = this.getCommitMsg();
+
+      // run unit-tests only if there is no skip command
+      let testsSkipUnitTests = this.checkForSkipUnitTestsCommand(commitMsg);
+      if (testsSkipUnitTests) {
+        response.push(testsSkipUnitTests);
+      }
+
+      let testsForceCommands = this.checkForForceCommands(commitMsg);
+      if (testsForceCommands && testsForceCommands.length > 0) {
+        //console.log ("$$$$$$$$$$$", tests2);
+        if (testsForceCommands.length > 1) {
+          for (let ruleObj of testsForceCommands) {
+            ruleObj ? response.push(ruleObj) : '';
           }
+        } else {
+          if (testsForceCommands.length === 1) {
+            response.push(testsForceCommands[0]);
+          }
+        }
 
-        if(typeof forceArgument !== "undefined") {
-          tests.push({
-            name: forceArgument.trim(),
-            type: forceType,
-            deployable: false
-          });
-        } else if (forceType === "uat") {
-          tests.push({
-            name: "backend",
-            type: "uat",
-            deployable: false
-          });
 
-          tests.push({
-            name: "frontend",
-            type: "uat",
-            deployable: false
-          });
+      }
+      return response;
+    }
+  }
 
-          tests.push({
-            name: "functional",
-            type: "functional",
-            deployable: false
-          });
-        } else if (forceType === "functional") {
-          tests.push({
-            name: "functional",
-            type: "functional",
-            deployable: false
-          });
+  getTests() {
+    const branch = this.getBranch();
+    let tests = [];
+    let rules = [
+      this.checkForReleaseOrMasterBranches(branch),
+      this.checkForOtherBranchesOfUATFunctionalTestsEnabled(branch),
+      this.checkForOtherBranchesOfUATFunctionalTestsNotEnabled()
+    ];
+
+    for (let rule of rules) {
+      if (rule && rule.length > 0) {
+        if (rule.length > 1) {
+          for (let ruleObj of rule) {
+            ruleObj ? tests.push(ruleObj) : '';
+          }
+        } else {
+          if (rule.length === 1) {
+            tests.push(rule[0]);
+          }
         }
       }
     }
-
     return tests;
   }
 
