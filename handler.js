@@ -424,54 +424,88 @@ class GithubBuild {
     }
   }
 
+
+  checkForceCommandForceType(forceType, skipDeployment) {
+    if (forceType && !skipDeployment && (forceType === "deployment" || forceType === "functional" || forceType === "uat")) {
+      return [{
+        name: "deployment",
+        type: "deployment",
+        deployable: true
+      }];
+    }
+  }
+
+  checkForceCommandForceArgument(forceArgument, forceType) {
+    if (forceArgument && typeof forceArgument !== "undefined") {
+      return [{
+        name: forceArgument.trim(),
+        type: forceType,
+        deployable: false
+      }];
+    }
+  }
+
+  checkForceCommandUat(forceArgument, forceType) {
+    if (typeof forceArgument === "undefined" && forceType === "uat") {
+      return [
+        {
+          name: "backend",
+          type: "uat",
+          deployable: false
+        },
+        {
+          name: "frontend",
+          type: "uat",
+          deployable: false
+        },
+        {
+          name: "functional",
+          type: "functional",
+          deployable: false
+        }
+      ];
+    }
+  }
+
+  checkForceCommandFunctional(forceArgument, forceType) {
+    if (typeof forceArgument === "undefined" && forceType === "functional") {
+      return [{
+        name: "functional",
+        type: "functional",
+        deployable: false
+      }];
+    }
+  }
+
   checkForForceCommands(commitMsg) {
-    let forceCommandsTests = [];
     const forceCommand = this.getForceCommand();
     const skipDeployment = commitMsg.indexOf("[skip deployment]") !== -1;
     if (this.getForceCommand() && this.enableForceUATCommands()) {
       const forceType = forceCommand[0];
       const forceArgument = forceCommand[1];
+      let forceCommandsTests = [];
 
-      if (forceType && !skipDeployment && (forceType === "deployment" || forceType === "functional" || forceType === "uat")) {
-        forceCommandsTests.push({
-          name: "deployment",
-          type: "deployment",
-          deployable: true
-        });
+      let rules = [
+        this.checkForceCommandForceType(forceType, skipDeployment),
+        this.checkForceCommandForceArgument(forceArgument, forceType),
+        this.checkForceCommandUat(forceArgument, forceType),
+        this.checkForceCommandFunctional(forceArgument, forceType)
+      ];
+
+      if (rules.length >= 1) {
+        for (let rule of rules) {
+          if (rule && typeof rule !== "undefined") {
+            if (rule.length > 1) {
+              for (let ruleObj of rule) {
+                typeof ruleObj !== "undefined" ? forceCommandsTests.push(ruleObj) : '';
+              }
+            }
+            if (rule.length === 1) {
+              typeof rule !== "undefined" ? forceCommandsTests.push(rule[0]) : '';
+            }
+          }
+        }
       }
-
-      if (typeof forceArgument !== "undefined") {
-        forceCommandsTests.push({
-          name: forceArgument.trim(),
-          type: forceType,
-          deployable: false
-        });
-      } else if (forceType === "uat") {
-        forceCommandsTests.push({
-          name: "backend",
-          type: "uat",
-          deployable: false
-        });
-
-        forceCommandsTests.push({
-          name: "frontend",
-          type: "uat",
-          deployable: false
-        });
-
-        forceCommandsTests.push({
-          name: "functional",
-          type: "functional",
-          deployable: false
-        });
-      } else if (forceType === "functional") {
-        forceCommandsTests.push({
-          name: "functional",
-          type: "functional",
-          deployable: false
-        });
-      }
-
       return forceCommandsTests;
     }
 
@@ -490,7 +524,6 @@ class GithubBuild {
 
       let testsForceCommands = this.checkForForceCommands(commitMsg);
       if (testsForceCommands && testsForceCommands.length > 0) {
-        //console.log ("$$$$$$$$$$$", tests2);
         if (testsForceCommands.length > 1) {
           for (let ruleObj of testsForceCommands) {
             ruleObj ? response.push(ruleObj) : '';
