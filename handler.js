@@ -1,5 +1,7 @@
 'use strict';
 
+const Rule = require('./libs/TestRules');
+
 const AWS = require('aws-sdk');
 AWS.config.setPromisesDependency(null);
 
@@ -308,7 +310,8 @@ class GithubBuild {
     const forceArgument = forceCommand ? forceCommand[1] : '';
     const branch = this.getBranch();
     const isEnabledUatFunctional = this.enableUatAndFunctionalTests();
-    this.dataSet = {branch, commitMessage, forceType, skipDeployment, forceArgument, isEnabledUatFunctional};
+    const isEnabledForceUATCommands = this.enableForceUATCommands()
+    this.dataSet = {branch, commitMessage, forceType, skipDeployment, forceArgument, isEnabledUatFunctional, forceCommand, isEnabledForceUATCommands};
   }
 
   getCommitSha(event){
@@ -386,214 +389,11 @@ class GithubBuild {
     ];
   }
 
-  checkForReleaseOrMasterBranches() {
-    return {
-      isMatch: () => {
-        const {branch} = this.dataSet;
-        return ["master", "release"].includes(branch);
-      },
-      getTests: () => {
-        return [{
-          name: "js-php",
-          type: "unit-tests",
-          deployable: false
-        }];
-      }
-    }
-  };
-
-  checkForOtherBranchesOfUATFunctionalTestsEnabled() {
-    return {
-      isMatch: () => {
-        const {branch, isEnabledUatFunctional} = this.dataSet;
-        return !["master", "release"].includes(branch) && isEnabledUatFunctional;
-      },
-      getTests: () => {
-        return [
-          {
-            name: "js-php",
-            type: "unit-tests",
-            deployable: false
-          },
-          {
-            name: "backend",
-            type: "uat",
-            deployable: false
-          },
-          {
-            name: "frontend",
-            type: "uat",
-            deployable: false
-          },
-          {
-            name: "functional",
-            type: "functional",
-            deployable: false
-          }
-        ];
-      }
-    }
-  };
-
-  checkForOtherBranchesOfUATFunctionalTestsNotEnabled() {
-    return {
-      isMatch: () => {
-        const {branch, isEnabledUatFunctional} = this.dataSet;
-        return !["master", "release"].includes(branch) && !isEnabledUatFunctional;
-      },
-      getTests: () => {
-        let response = [];
-        // run unit-tests only if there is no skip command
-        if (this.checkForSkipUnitTestsCommand().isMatch()) {
-          response.push(this.checkForSkipUnitTestsCommand().getTests());
-        }
-
-        let testsForceCommands = this.checkForForceCommands();
-
-        if (testsForceCommands && testsForceCommands.length > 0) {
-          response.push(testsForceCommands);
-        }
-
-        return this.prepareArray(response);
-      }
-    }
-  };
-
-  checkForSkipUnitTestsCommand(){
-    return {
-      isMatch: () => {
-        const {commitMessage} = this.dataSet;
-        return commitMessage.indexOf("[skip unit-tests]") === -1;
-      },
-      getTests: () => {
-        return [{
-          name: "js-php",
-          type: "unit-tests",
-          deployable: false
-        }];
-      }
-    }
-  };
-
-  checkForceCommandForceType() {
-    return {
-      isMatch: () => {
-        const {forceType, skipDeployment} = this.dataSet;
-        const checkForceTypes = ["deployment", "functional", "uat"];
-        return forceType && !skipDeployment && checkForceTypes.includes(forceType);
-      },
-      getTests: () => {
-        return [{
-          name: "deployment",
-          type: "deployment",
-          deployable: true
-        }];
-      }
-    }
-  };
-
- checkForceCommandForceArgument() {
-   return {
-     isMatch: () => {
-       const {forceArgument} = this.dataSet;
-       return forceArgument && typeof forceArgument !== "undefined";
-     },
-     getTests: () => {
-       return [{
-         name: this.dataSet.forceArgument.trim(),
-         type: this.dataSet.forceType,
-         deployable: false
-       }];
-     }
-   }
-  };
-
-  checkForceCommandUat() {
-    return {
-      isMatch: () => {
-        const {forceArgument, forceType} = this.dataSet;
-        return typeof forceArgument === "undefined" && forceType === "uat";
-      },
-      getTests: () => {
-        return [
-          {
-            name: "backend",
-            type: "uat",
-            deployable: false
-          },
-          {
-            name: "frontend",
-            type: "uat",
-            deployable: false
-          },
-          {
-            name: "functional",
-            type: "functional",
-            deployable: false
-          }
-        ];
-      }
-    }
-  };
-
-  checkForceCommandFunctional() {
-    return {
-      isMatch: () => {
-        const {forceArgument, forceType} = this.dataSet;
-        return typeof forceArgument === "undefined" && forceType === "functional";
-      },
-      getTests: () => {
-        return [{
-          name: "functional",
-          type: "functional",
-          deployable: false
-        }];
-      }
-    }
-  };
-
-  // combine all objects into a single array if some of the objects are in a sub-array
-  prepareArray(arr){
-    // Ref: https://www.jstips.co/en/javascript/flattening-multidimensional-arrays-in-javascript/
-    return [].concat.apply([], arr);
-  }
-
-  // return all the force commands related to test
-  checkForForceCommands() {
-    if (this.getForceCommand() && this.enableForceUATCommands()) {
-      const rules = [
-        this.checkForceCommandForceType(),
-        this.checkForceCommandForceArgument(),
-        this.checkForceCommandUat(),
-        this.checkForceCommandFunctional()
-      ];
-
-      return this.getAllRules(rules);
-    }
-  }
-
   // get all tests related to the given commands
   getTests() {
-    let rules = [
-      this.checkForReleaseOrMasterBranches(),
-      this.checkForOtherBranchesOfUATFunctionalTestsEnabled(),
-      this.checkForOtherBranchesOfUATFunctionalTestsNotEnabled()
-    ];
-
-    return this.getAllRules(rules);
-  }
-
-  // combines the matching rules
-  getAllRules(rules){
-    let tests = [];
-    // loop through each matching rule and combine the tests
-    for (let rule of rules) {
-      if (rule.isMatch()) {
-        tests.push(rule.getTests());
-      }
-    }
-
-    return this.prepareArray(tests);
+    //return this.getAllRules(rules);
+    const ruleSet = new Rule(this.dataSet);
+    return ruleSet.getTests();
   }
 
   enableUatAndFunctionalTests() {
