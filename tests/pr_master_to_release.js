@@ -3,7 +3,8 @@ let {
   pr,
   unittests,
   functional,
-  uat
+  uat,
+  deployment
 } = require('./helpers/helper.js');
 
 test(pr, "master", "release", [
@@ -73,5 +74,6 @@ test(pr, "master", "release", [
   unittests(),
   uat("backend"),
   uat("frontend"),
-  functional()
+  functional(),
+  deployment()
 ]);
