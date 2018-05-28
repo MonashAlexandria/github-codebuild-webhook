@@ -1,6 +1,6 @@
 'use strict';
 
-const Rule = require('./libs/TestRules/RulesHelper');
+const RulesHelper = require('./libs/TestRules/RulesHelper');
 
 const AWS = require('aws-sdk');
 AWS.config.setPromisesDependency(null);
@@ -391,8 +391,8 @@ class GithubBuild {
 
   // get all tests related to the given commands
   getTests() {
-    const ruleSet = new Rule(this.dataSet)
-    return ruleSet.getAllTests()
+    const rulesHelper = new RulesHelper(this.dataSet);
+    return rulesHelper.getAllTests();
   }
 
   enableUatAndFunctionalTests() {

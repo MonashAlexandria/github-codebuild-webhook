@@ -1,24 +1,16 @@
-'use strict'
+'use strict';
 
-const BaseRule = require('./BaseRule.js')
+const Rule = require('./Rule.js');
 
-class CheckForReleaseOrMasterBranches extends BaseRule {
-
-  constructor(dataSet) {
-    super(dataSet)
+class CheckForReleaseOrMasterBranches extends Rule {
+  isMatch() {
+    const {branch} = this.dataSet;
+    return ['master', 'release'].includes(branch);
   }
 
-  check() {
-    return {
-      isMatch:() => {
-        const {branch} = this.dataSet
-        return ['master','release'].includes(branch)
-      },
-      getTests:() => {
-        this.getTest('js-php','unit-tests',false)
-      }
-    }
+  getTests() {
+    super.getTest('js-php', 'unit-tests', false);
   }
 }
 
-module.exports = CheckForReleaseOrMasterBranches
+module.exports = CheckForReleaseOrMasterBranches;

@@ -1,27 +1,20 @@
-'use strict'
+'use strict';
 
-const BaseRule = require('./BaseRule.js')
+const Rule = require('./Rule.js');
 
-class CheckForOtherBranchesOfUATFunctionalTestsEnabled extends BaseRule {
-  constructor(dataSet) {
-    super(dataSet)
+class CheckForOtherBranchesOfUATFunctionalTestsEnabled extends Rule {
+  isMatch() {
+    const {branch, isEnabledUatFunctional} = this.dataSet;
+    return !['master', 'release'].includes(branch) && isEnabledUatFunctional;
   }
 
-  check() {
-    return {
-      isMatch:() => {
-        const {branch,isEnabledUatFunctional} = this.dataSet
-        return !['master','release'].includes(branch) && isEnabledUatFunctional
-      },
-      getTests:() => {
-        this.getTest('js-php','unit-tests',false)
-        this.getTest('backend','uat',false)
-        this.getTest('frontend','uat',false)
-        this.getTest('functional','functional',false)
-        this.getTest('deployment','deployment',true)
-      }
-    }
+  getTests() {
+    super.getTest('js-php', 'unit-tests', false);
+    super.getTest('backend', 'uat', false);
+    super.getTest('frontend', 'uat', false);
+    super.getTest('functional', 'functional', false);
+    super.getTest('deployment', 'deployment', true);
   }
 }
 
-module.exports = CheckForOtherBranchesOfUATFunctionalTestsEnabled
+module.exports = CheckForOtherBranchesOfUATFunctionalTestsEnabled;

@@ -1,26 +1,18 @@
-'use strict'
+'use strict';
 
-const BaseRule = require('./BaseRule.js')
+const Rule = require('./Rule.js');
 
-class CheckForceCommandUat extends BaseRule {
-  constructor(dataSet) {
-    super(dataSet)
+class CheckForceCommandUat extends Rule {
+  isMatch() {
+    const {forceArgument, forceType} = this.dataSet;
+    return typeof forceArgument === 'undefined' && forceType === 'uat';
   }
 
-  check() {
-    return {
-      isMatch:() => {
-        const {forceArgument,forceType} = this.dataSet
-        return typeof forceArgument === 'undefined' && forceType === 'uat'
-      },
-      getTests:() => {
-
-        this.getTest('backend','uat',false)
-        this.getTest('frontend','uat',false)
-        this.getTest('functional','functional',false)
-      }
-    }
+  getTests() {
+    super.getTest('backend', 'uat', false);
+    super.getTest('frontend', 'uat', false);
+    super.getTest('functional', 'functional', false);
   }
 }
 
-module.exports = CheckForceCommandUat
+module.exports = CheckForceCommandUat;
