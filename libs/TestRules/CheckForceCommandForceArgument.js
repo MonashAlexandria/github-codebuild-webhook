@@ -4,7 +4,7 @@ const CheckForNonUatFunctionalMasterReleaseBranches = require('./CheckForNonUatF
 
 class CheckForceCommandForceArgument extends CheckForNonUatFunctionalMasterReleaseBranches {
   isMatch() {
-    const {forceArgument} = this.dataSet;
+    const { forceArgument } = this.dataSet;
     return forceArgument !== undefined && super.isMatch();
   }
 

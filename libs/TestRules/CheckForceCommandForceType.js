@@ -4,7 +4,7 @@ const CheckForNonUatFunctionalMasterReleaseBranches = require('./CheckForNonUatF
 
 class CheckForceCommandForceType extends CheckForNonUatFunctionalMasterReleaseBranches {
   isMatch() {
-    const {forceType, skipDeployment} = this.dataSet;
+    const { forceType, skipDeployment } = this.dataSet;
     const checkForceTypes = ['deployment', 'functional', 'uat'];
     return forceType && !skipDeployment && checkForceTypes.includes(forceType) && super.isMatch();
   }

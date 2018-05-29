@@ -4,7 +4,7 @@ const Rule = require('./Rule.js');
 
 class CheckForReleaseOrMasterBranches extends Rule {
   isMatch() {
-    const {branch} = this.dataSet;
+    const { branch } = this.dataSet;
     return ['master', 'release'].includes(branch);
   }
 

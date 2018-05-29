@@ -5,7 +5,7 @@ const Rule = require('./Rule.js');
 class CheckForNonUatFunctionalMasterReleaseBranches extends Rule {
 
   isMatch() {
-    const {branch, isEnabledUatFunctional, forceCommand, isEnabledForceUATCommands} = this.dataSet;
+    const { branch, isEnabledUatFunctional, forceCommand, isEnabledForceUATCommands } = this.dataSet;
     return !['master', 'release'].includes(branch) && !isEnabledUatFunctional && forceCommand && isEnabledForceUATCommands;
   }
 

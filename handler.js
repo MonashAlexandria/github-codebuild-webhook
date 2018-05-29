@@ -311,7 +311,7 @@ class GithubBuild {
     const branch = this.getBranch();
     const isEnabledUatFunctional = this.enableUatAndFunctionalTests();
     const isEnabledForceUATCommands = this.enableForceUATCommands()
-    this.dataSet = {branch, commitMessage, forceType, skipDeployment, forceArgument, isEnabledUatFunctional, forceCommand, isEnabledForceUATCommands};
+    this.dataSet = { branch, commitMessage, forceType, skipDeployment, forceArgument, isEnabledUatFunctional, forceCommand, isEnabledForceUATCommands };
   }
 
   getCommitSha(event){

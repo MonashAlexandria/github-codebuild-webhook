@@ -4,7 +4,7 @@ const Rule = require('./Rule.js');
 
 class CheckForOtherBranchesOfUATFunctionalTestsEnabled extends Rule {
   isMatch() {
-    const {branch, isEnabledUatFunctional} = this.dataSet;
+    const { branch, isEnabledUatFunctional } = this.dataSet;
     return !['master', 'release'].includes(branch) && isEnabledUatFunctional;
   }
 

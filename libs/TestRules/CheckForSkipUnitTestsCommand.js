@@ -4,7 +4,7 @@ const CheckForNonUatFunctionalMasterReleaseBranches = require('./CheckForNonUatF
 
 class CheckForSkipUnitTestsCommand extends CheckForNonUatFunctionalMasterReleaseBranches {
   isMatch() {
-    const {commitMessage} = this.dataSet;
+    const { commitMessage } = this.dataSet;
     return commitMessage !== undefined && commitMessage.indexOf('[skip unit-tests]') === -1 && super.isMatchForSkipUnitTests();
   }
 
