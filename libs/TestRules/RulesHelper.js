@@ -1,19 +1,12 @@
 'use strict';
 
-const CheckForReleaseOrMasterBranches = require(
-    './CheckForReleaseOrMasterBranches');
-const CheckForOtherBranchesOfUATFunctionalTestsEnabled = require(
-    './CheckForOtherBranchesOfUATFunctionalTestsEnabled');
-const CheckForOtherBranchesOfUATFunctionalTestsNotEnabledSkipUnitTests = require(
-    './CheckForOtherBranchesOfUATFunctionalTestsNotEnabledSkipUnitTests');
-const CheckForOtherBranchesOfUATFunctionalTestsNotEnabledForceArgument = require(
-    './CheckForOtherBranchesOfUATFunctionalTestsNotEnabledForceArgument');
-const CheckForOtherBranchesOfUATFunctionalTestsNotEnabledForceType = require(
-    './CheckForOtherBranchesOfUATFunctionalTestsNotEnabledForceType');
-const CheckForOtherBranchesOfUATFunctionalTestsNotEnabledFunctional = require(
-    './CheckForOtherBranchesOfUATFunctionalTestsNotEnabledFunctional');
-const CheckForOtherBranchesOfUATFunctionalTestsNotEnabledUAT = require(
-    './CheckForOtherBranchesOfUATFunctionalTestsNotEnabledUAT');
+const CheckForReleaseOrMasterBranches = require('./CheckForReleaseOrMasterBranches');
+const CheckForOtherBranchesOfUATFunctionalTestsEnabled = require('./CheckForOtherBranchesOfUATFunctionalTestsEnabled');
+const CheckForSkipUnitTestsCommand = require('./CheckForSkipUnitTestsCommand');
+const CheckForceCommandForceType = require('./CheckForceCommandForceType');
+const CheckForceCommandForceArgument = require('./CheckForceCommandForceArgument');
+const CheckForceCommandUat = require('./CheckForceCommandUat');
+const CheckForceCommandFunctional = require('./CheckForceCommandFunctional');
 
 class RulesHelper {
   constructor(dataSet) {
@@ -22,36 +15,32 @@ class RulesHelper {
 
   getAllTests() {
 
-    // single map object to be used throughout the process
-    let newMap = new Map();
-
     const rules = [
-      new CheckForReleaseOrMasterBranches(this.dataSet, newMap),
-      new CheckForOtherBranchesOfUATFunctionalTestsEnabled(this.dataSet,
-          newMap),
-      new CheckForOtherBranchesOfUATFunctionalTestsNotEnabledSkipUnitTests(
-          this.dataSet, newMap),
-      new CheckForOtherBranchesOfUATFunctionalTestsNotEnabledForceType(
-          this.dataSet, newMap),
-      new CheckForOtherBranchesOfUATFunctionalTestsNotEnabledForceArgument(
-          this.dataSet, newMap),
-      new CheckForOtherBranchesOfUATFunctionalTestsNotEnabledUAT(this.dataSet,
-          newMap),
-      new CheckForOtherBranchesOfUATFunctionalTestsNotEnabledFunctional(
-          this.dataSet, newMap),
-
+      new CheckForReleaseOrMasterBranches(this.dataSet),
+      new CheckForOtherBranchesOfUATFunctionalTestsEnabled(this.dataSet),
+      new CheckForSkipUnitTestsCommand(this.dataSet),
+      new CheckForceCommandForceType(this.dataSet),
+      new CheckForceCommandForceArgument(this.dataSet),
+      new CheckForceCommandUat(this.dataSet),
+      new CheckForceCommandFunctional(this.dataSet),
     ];
 
-    return this.getAllRules(rules, newMap);
+    return this.getAllRules(rules);
   }
 
-  getAllRules(rules, newMap) {
+  getAllRules(rules) {
+    let newMap = new Map();
     for (let rule of rules) {
       if (rule.isMatch()) {
-        rule.getTests();
+        let rulesReturned = rule.getTests();
+        if (rulesReturned && rulesReturned.length > 0) {
+          for (rule of rulesReturned) {
+            newMap.set(rule[0], rule[1]);
+          }
+        }
       }
     }
-    return Array.from(newMap.values());
+    return Array.from(newMap.values()).length > 0 ? Array.from(newMap.values()) : [];
   }
 }
 

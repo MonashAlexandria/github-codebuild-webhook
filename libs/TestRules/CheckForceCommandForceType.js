@@ -1,16 +1,17 @@
 'use strict';
 
-const Rule = require('./Rule.js');
+const CheckForNonUatFunctionalMasterReleaseBranches = require('./CheckForNonUatFunctionalMasterReleaseBranches.js');
 
-class CheckForceCommandForceType extends Rule {
+class CheckForceCommandForceType extends CheckForNonUatFunctionalMasterReleaseBranches {
   isMatch() {
     const {forceType, skipDeployment} = this.dataSet;
     const checkForceTypes = ['deployment', 'functional', 'uat'];
-    return forceType && !skipDeployment && checkForceTypes.includes(forceType);
+    return forceType && !skipDeployment && checkForceTypes.includes(forceType) && super.isMatch();
   }
 
   getTests() {
-    super.getTest('deployment', 'deployment', true);
+    this.addTest('deployment', 'deployment', true);
+    return Array.from(this.testsMap);
   }
 }
 

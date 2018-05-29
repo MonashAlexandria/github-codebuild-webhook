@@ -5,25 +5,29 @@
  */
 class Rule {
 
-  constructor(dataSet, testsMap) {
+  constructor(dataSet) {
     this.dataSet = dataSet;
-    this.testsMap = testsMap;
+    this.testsMap = new Map();
   }
 
   // sets the given test in the map
-  getTest(name, type, deployable) {
-    this.testsMap.set(
+  addTest(name, type, deployable) {
+    if (name !== '' && type !== '' && deployable !== '') {
+      this.testsMap.set(
         name,
         {
           name: name,
           type: type,
           deployable: deployable,
         });
+    }
   }
 
-  isMatch() {}
+  isMatch() {
+  }
 
-  getTests() {}
+  getTests() {
+  }
 
 }
 

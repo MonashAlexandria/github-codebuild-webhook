@@ -1,16 +1,16 @@
 'use strict';
 
-const Rule = require('./Rule.js');
+const CheckForNonUatFunctionalMasterReleaseBranches = require('./CheckForNonUatFunctionalMasterReleaseBranches.js');
 
-class CheckForceCommandFunctional extends Rule {
+class CheckForceCommandFunctional extends CheckForNonUatFunctionalMasterReleaseBranches {
   isMatch() {
     const {forceArgument, forceType} = this.dataSet;
-    return typeof forceArgument === 'undefined' && forceType ===
-        'functional';
+    return typeof forceArgument === 'undefined' && forceType === 'functional' && super.isMatch();
   }
 
   getTests() {
-    super.getTest('functional', 'functional', false);
+    this.addTest('functional', 'functional', false);
+    return Array.from(this.testsMap);
   }
 }
 

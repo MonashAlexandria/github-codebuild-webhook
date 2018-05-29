@@ -9,7 +9,8 @@ class CheckForReleaseOrMasterBranches extends Rule {
   }
 
   getTests() {
-    super.getTest('js-php', 'unit-tests', false);
+    this.addTest('js-php', 'unit-tests', false);
+    return Array.from(this.testsMap);
   }
 }
 

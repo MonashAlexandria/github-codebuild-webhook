@@ -9,11 +9,12 @@ class CheckForOtherBranchesOfUATFunctionalTestsEnabled extends Rule {
   }
 
   getTests() {
-    super.getTest('js-php', 'unit-tests', false);
-    super.getTest('backend', 'uat', false);
-    super.getTest('frontend', 'uat', false);
-    super.getTest('functional', 'functional', false);
-    super.getTest('deployment', 'deployment', true);
+    this.addTest('js-php', 'unit-tests', false);
+    this.addTest('backend', 'uat', false);
+    this.addTest('frontend', 'uat', false);
+    this.addTest('functional', 'functional', false);
+    this.addTest('deployment', 'deployment', true);
+    return Array.from(this.testsMap);
   }
 }
 
