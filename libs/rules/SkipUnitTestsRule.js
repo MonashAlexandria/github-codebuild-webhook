@@ -1,8 +1,8 @@
 'use strict';
 
-const CheckForNonUatFunctionalMasterReleaseBranches = require('./ForceCommandRule.js');
+const Rule = require('./Rule.js');
 
-class SkipUnitTestsRule extends CheckForNonUatFunctionalMasterReleaseBranches {
+class SkipUnitTestsRule extends Rule {
   isMatch() {
     const { commitMessage } = this.dataSet;
     return typeof commitMessage !== 'undefined' && commitMessage.indexOf('[skip unit-tests]') !== -1;
