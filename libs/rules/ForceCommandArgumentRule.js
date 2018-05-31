@@ -9,7 +9,7 @@ class ForceCommandArgumentRule extends ForceCommandRule {
   }
 
   getTests(tests) {
-    this.addTest(tests, this.dataSet.forceArgument.trim(), this.dataSet.forceType, false);
+    this.addTest(tests, this.dataSet.forceArgument.trim(), this.dataSet.forceType);
     return tests;
   }
 }

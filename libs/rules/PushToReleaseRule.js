@@ -14,9 +14,9 @@ class PushToReleaseRule extends Rule {
   }
 
   getTests(tests) {
-    this.addTest(tests, 'backend', 'uat', false);
-    this.addTest(tests, 'frontend', 'uat', false);
-    this.addTest(tests, 'functional', 'functional', false);
+    this.addTest(tests, 'backend', 'uat');
+    this.addTest(tests, 'frontend', 'uat');
+    this.addTest(tests, 'functional', 'functional');
     this.addTest(tests, 'deployment', 'deployment', true);
     return tests;
   }

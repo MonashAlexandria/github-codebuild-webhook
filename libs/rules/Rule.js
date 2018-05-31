@@ -14,8 +14,8 @@ class Rule {
   }
 
   // sets the given test in the map
-  addTest(tests, name, type, deployable) {
-    if (name !== '' && type !== '' && deployable !== '') {
+  addTest(tests, name, type, deployable = false) {
+    if (name !== '' && type !== '') {
       tests.set(
         name,
         {

@@ -9,7 +9,7 @@ class ForceCommandFunctionalRule extends ForceCommandRule {
   }
 
   getTests(tests) {
-    this.addTest(tests, 'functional', 'functional', false);
+    this.addTest(tests, 'functional', 'functional');
     return tests;
   }
 }
