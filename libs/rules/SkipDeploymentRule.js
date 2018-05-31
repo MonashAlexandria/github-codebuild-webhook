@@ -2,7 +2,7 @@
 
 const Rule = require('./Rule.js');
 
-class SkipUnitTestsRule extends Rule {
+class SkipDeploymentRule extends Rule {
   isMatch() {
     return this.dataSet.skipDeployment;
   }
@@ -13,4 +13,4 @@ class SkipUnitTestsRule extends Rule {
   }
 }
 
-module.exports = SkipUnitTestsRule;
+module.exports = SkipDeploymentRule;

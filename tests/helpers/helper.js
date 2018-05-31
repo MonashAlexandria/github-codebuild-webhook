@@ -85,7 +85,6 @@ function pr(t, branch, baseBranch, commitMsg, expectedTests) {
   }, commitMsg);
 
   const tests = build.getTests();
-  console.log(tests);
   t.deepEqual(tests, expectedTests, commitMsg);
 }
 
