@@ -302,16 +302,7 @@ class GithubBuild {
     const currentTime = new Date();
     this.startTime = currentTime.getTime();
 
-    // variables required for implementing rules pattern
-    const forceCommand = this.getForceCommand();
-    const commitMessage = this.getCommitMsg();
-    const skipDeployment = commitMessage ? commitMessage.indexOf("[skip deployment]") !== -1 : '';
-    const forceType = forceCommand ? forceCommand[0] : '';
-    const forceArgument = forceCommand ? forceCommand[1] : '';
-    const branch = this.getBranch();
-    const isEnabledUatFunctional = this.enableUatAndFunctionalTests();
-    const isEnabledForceUATCommands = this.enableForceUATCommands()
-    this.dataSet = { branch, commitMessage, forceType, skipDeployment, forceArgument, isEnabledUatFunctional, forceCommand, isEnabledForceUATCommands };
+
   }
 
   getCommitSha(event){
@@ -391,7 +382,17 @@ class GithubBuild {
 
   // get all tests related to the given commands
   getTests() {
-    const rulesHelper = new RulesHelper(this.dataSet);
+    // variables required for implementing rules pattern
+    const forceCommand = this.getForceCommand();
+    const commitMessage = this.getCommitMsg();
+    const skipDeployment = commitMessage ? commitMessage.indexOf("[skip deployment]") !== -1 : '';
+    const forceType = forceCommand ? forceCommand[0] : '';
+    const forceArgument = forceCommand ? forceCommand[1] : '';
+    const branch = this.getBranch();
+    const isEnabledUatFunctional = this.enableUatAndFunctionalTests();
+    const isEnabledForceUATCommands = this.enableForceUATCommands();
+    const dataSet = { branch, commitMessage, forceType, skipDeployment, forceArgument, isEnabledUatFunctional, forceCommand, isEnabledForceUATCommands };
+    const rulesHelper = new RulesHelper(dataSet);
     return rulesHelper.getAllTests();
   }
 

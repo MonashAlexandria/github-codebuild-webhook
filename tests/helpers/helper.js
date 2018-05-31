@@ -57,34 +57,36 @@ function push(t, branch, commitMsg, expectedTests) {
   t.deepEqual(build.getTests(), expectedTests, commitMsg);
 }
 
-function pr(t, branch, targetBranch, commitMsg, expectedTests) {
+function pr(t, branch, baseBranch, commitMsg, expectedTests) {
   if (Array.isArray(branch)) {
     return branch.forEach(b => {
-      pr(t, b, targetBranch, commitMsg, expectedTests);
+      pr(t, b, baseBranch, commitMsg, expectedTests);
   });
   }
 
   if (Array.isArray(commitMsg)) {
     return commitMsg.forEach(msg => {
-      pr(t, branch, targetBranch, msg, expectedTests);
+      pr(t, branch, baseBranch, msg, expectedTests);
     });
   }
 
   const build = new Pr({
     pull_request: {
       head: {
-        sha: ""
+        sha: "",
+        ref: branch
       },
       base: {
-        ref: targetBranch
+        ref: baseBranch
       }
     },
-    ref: branch,
     after: "",
     repository: "alexandria"
   }, commitMsg);
 
-  t.deepEqual(build.getTests(), expectedTests, commitMsg);
+  const tests = build.getTests();
+  console.log(tests);
+  t.deepEqual(tests, expectedTests, commitMsg);
 }
 
 push.title = (title, branch, commitMsg, expectedTests) => `push '${branch}' '${commitMsg}'`.trim();

@@ -20,13 +20,6 @@ test(pr, "mybranch", "master", [
   unittests()
 ]);
 
-test(pr, "mybranch", "master", [
-  "[skip unit-tests]",
-  "[skip unit-tests][on push]",
-  "[skip unit-tests][on push][on pr]"
-], [
-  // no tests
-]);
 
 test(pr, "mybranch", "master", [
   "[force functional]",

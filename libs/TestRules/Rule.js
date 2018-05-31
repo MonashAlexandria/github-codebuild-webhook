@@ -7,13 +7,16 @@ class Rule {
 
   constructor(dataSet) {
     this.dataSet = dataSet;
-    this.testsMap = new Map();
+  }
+
+  isFromMasterOrRelease(){
+    return ['master', 'release'].includes(this.dataSet.branch);
   }
 
   // sets the given test in the map
-  addTest(name, type, deployable) {
+  addTest(tests, name, type, deployable) {
     if (name !== '' && type !== '' && deployable !== '') {
-      this.testsMap.set(
+      tests.set(
         name,
         {
           name: name,
@@ -24,9 +27,11 @@ class Rule {
   }
 
   isMatch() {
+    return true;
   }
 
-  getTests() {
+  getTests(tests) {
+    return new Error('must override this function');
   }
 
 }

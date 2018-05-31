@@ -1,12 +1,13 @@
 'use strict';
 
-const CheckForReleaseOrMasterBranches = require('./CheckForReleaseOrMasterBranches');
-const CheckForOtherBranchesOfUATFunctionalTestsEnabled = require('./CheckForOtherBranchesOfUATFunctionalTestsEnabled');
-const CheckForSkipUnitTestsCommand = require('./CheckForSkipUnitTestsCommand');
-const CheckForceCommandForceType = require('./CheckForceCommandForceType');
-const CheckForceCommandForceArgument = require('./CheckForceCommandForceArgument');
-const CheckForceCommandUat = require('./CheckForceCommandUat');
-const CheckForceCommandFunctional = require('./CheckForceCommandFunctional');
+const PrUatRule = require('./PrUatRule');
+const UnitTestRule = require('./UnitTestRule.js');
+const SkipUnitTestsRule = require('./SkipUnitTestsRule.js');
+const ForceCommandDeploymentRule = require('./ForceCommandDeploymentRule.js');
+const ForceCommandArgumentRule = require('./ForceCommandArgumentRule.js');
+const ForceCommandUatRule = require('./ForceCommandUatRule.js');
+const ForceCommandFunctionalRule = require('./ForceCommandFunctionalRule.js');
+const SkipDeploymentRule = require('./SkipDeploymentRule.js');
 
 class RulesHelper {
   constructor(dataSet) {
@@ -16,31 +17,27 @@ class RulesHelper {
   getAllTests() {
 
     const rules = [
-      new CheckForReleaseOrMasterBranches(this.dataSet),
-      new CheckForOtherBranchesOfUATFunctionalTestsEnabled(this.dataSet),
-      new CheckForSkipUnitTestsCommand(this.dataSet),
-      new CheckForceCommandForceType(this.dataSet),
-      new CheckForceCommandForceArgument(this.dataSet),
-      new CheckForceCommandUat(this.dataSet),
-      new CheckForceCommandFunctional(this.dataSet),
+      new UnitTestRule(this.dataSet),
+      new PrUatRule(this.dataSet),
+      new ForceCommandDeploymentRule(this.dataSet),
+      new ForceCommandArgumentRule(this.dataSet),
+      new ForceCommandUatRule(this.dataSet),
+      new ForceCommandFunctionalRule(this.dataSet),
+      new SkipUnitTestsRule(this.dataSet),
+      new SkipDeploymentRule(this.dataSet)
     ];
 
     return this.getAllRules(rules);
   }
 
   getAllRules(rules) {
-    let newMap = new Map();
+    let tests = new Map();
     for (let rule of rules) {
       if (rule.isMatch()) {
-        let rulesReturned = rule.getTests();
-        if (rulesReturned && rulesReturned.length > 0) {
-          for (rule of rulesReturned) {
-            newMap.set(rule[0], rule[1]);
-          }
-        }
+        tests = rule.getTests(tests);
       }
     }
-    return Array.from(newMap.values()).length > 0 ? Array.from(newMap.values()) : [];
+    return tests.size > 0 ? Array.from(tests.values()) : [];
   }
 }
 
