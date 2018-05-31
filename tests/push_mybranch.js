@@ -180,3 +180,33 @@ test(push, "mybranch", [
   deployment(),
   uat("uat.php")
 ]);
+
+test(push, "release", [
+  "Dummy commit"
+], [
+  // consider only the last occurence of [force uat]
+  uat("backend"),
+  uat("frontend"),
+  functional(),
+  deployment(),
+  unittests()
+]);
+
+test(push, "release", [
+  "[force uat ignore.php][force uat uat.php][on push]"
+], [
+  // consider only the last occurence of [force uat]
+  unittests(),
+  deployment(),
+  uat("uat.php")
+]);
+
+test(push, "release", [
+  "[skip deployment][force uat][on push]",
+  "[skip deployment][force uat][on push][on pr]"
+], [
+  unittests(),
+  uat("backend"),
+  uat("frontend"),
+  functional()
+]);

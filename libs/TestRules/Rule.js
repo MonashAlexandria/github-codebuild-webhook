@@ -9,8 +9,8 @@ class Rule {
     this.dataSet = dataSet;
   }
 
-  isFromMasterOrRelease(){
-    return ['master', 'release'].includes(this.dataSet.branch);
+  isBranchFromMaster(){
+    return 'master' === this.dataSet.branch;
   }
 
   // sets the given test in the map

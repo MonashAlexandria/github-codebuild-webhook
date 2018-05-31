@@ -389,16 +389,12 @@ class GithubBuild {
     const forceType = forceCommand ? forceCommand[0] : '';
     const forceArgument = forceCommand ? forceCommand[1] : '';
     const branch = this.getBranch();
-    const isEnabledUatFunctional = this.enableUatAndFunctionalTests();
     const isEnabledForceUATCommands = this.enableForceUATCommands();
-    const dataSet = { branch, commitMessage, forceType, skipDeployment, forceArgument, isEnabledUatFunctional, forceCommand, isEnabledForceUATCommands };
+    const dataSet = { branch, commitMessage, forceType, skipDeployment, forceArgument, forceCommand, isEnabledForceUATCommands };
     const rulesHelper = new RulesHelper(dataSet);
     return rulesHelper.getAllTests();
   }
 
-  enableUatAndFunctionalTests() {
-    return false;
-  }
 
   enableForceUATCommands() {
     const regex = new RegExp(/\[on (push|pr)\]/gm);
@@ -656,10 +652,6 @@ class Pr extends GithubBuild{
       value: this.event.pull_request.number.toString()
     });
     return envVariables;
-  }
-
-  enableUatAndFunctionalTests() {
-    return this.event.pull_request.base.ref === "release";
   }
 
   buildable(){
