@@ -34,7 +34,7 @@ class TestsFactory {
       }
     }
 
-    return tests.size > 0 ? Array.from(tests.values()) : [];
+    return Array.from(tests.values());
   }
 }
 
