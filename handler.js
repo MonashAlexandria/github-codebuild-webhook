@@ -1,6 +1,6 @@
 'use strict';
 
-const RulesHelper = require('./libs/TestRules/RulesHelper');
+const RulesHelper = require('./libs/rules/RulesHelper.js');
 
 const AWS = require('aws-sdk');
 AWS.config.setPromisesDependency(null);
