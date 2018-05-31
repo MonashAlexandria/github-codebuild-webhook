@@ -1,0 +1,19 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo Installing Avajs
+      - npm install -g --save-exact ava@next
+  pre_build:
+    commands:
+      - echo Installing source NPM dependencies...
+      - npm install
+  build:
+    commands:
+      - echo Start buil
+      - ava tests/pr_mybranch_to_master.js
+      - ava tests/push_mybranch.js
+  post_build:
+    commands:
+      - echo Build completed
