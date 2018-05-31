@@ -1,6 +1,6 @@
 'use strict';
 
-const RulesHelper = require('./libs/rules/RulesHelper.js');
+const TestsFactory = require('./libs/rules/TestsFactory.js');
 
 const AWS = require('aws-sdk');
 AWS.config.setPromisesDependency(null);
@@ -391,8 +391,8 @@ class GithubBuild {
     const branch = this.getBranch();
     const isEnabledForceUATCommands = this.enableForceUATCommands();
     const dataSet = { branch, commitMessage, forceType, skipDeployment, forceArgument, forceCommand, isEnabledForceUATCommands };
-    const rulesHelper = new RulesHelper(dataSet);
-    return rulesHelper.getAllTests();
+    const testsFactory = new TestsFactory(dataSet);
+    return testsFactory.getAllTests();
   }
 
 

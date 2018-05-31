@@ -9,13 +9,14 @@ const ForceCommandFunctionalRule = require('./ForceCommandFunctionalRule.js');
 const SkipDeploymentRule = require('./SkipDeploymentRule.js');
 const PushToReleaseRule = require('./PushToReleaseRule.js');
 
-class RulesHelper {
+class TestsFactory {
   constructor(dataSet) {
     this.dataSet = dataSet;
   }
 
   getAllTests() {
 
+    let tests = new Map();
     const rules = [
       new PushToReleaseRule(this.dataSet),
       new UnitTestRule(this.dataSet),
@@ -27,19 +28,14 @@ class RulesHelper {
       new SkipDeploymentRule(this.dataSet)
     ];
 
-    return this.getAllRules(rules);
-  }
-
-  getAllRules(rules) {
-    let tests = new Map();
     for (let rule of rules) {
       if (rule.isMatch()) {
         tests = rule.getTests(tests);
       }
     }
-    console.log(Array.from(tests.values()));
+
     return tests.size > 0 ? Array.from(tests.values()) : [];
   }
 }
 
-module.exports = RulesHelper;
+module.exports = TestsFactory;
