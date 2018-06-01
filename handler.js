@@ -390,7 +390,8 @@ class GithubBuild {
     const forceArgument = forceCommand ? forceCommand[1] : '';
     const branch = this.getBranch();
     const isEnabledForceUATCommands = this.enableForceUATCommands();
-    const dataSet = { branch, commitMessage, forceType, skipDeployment, forceArgument, forceCommand, isEnabledForceUATCommands };
+    const eventType = this.getEventType();
+    const dataSet = { branch, commitMessage, forceType, skipDeployment, forceArgument, forceCommand, isEnabledForceUATCommands, eventType };
     const testsFactory = new TestsFactory(dataSet);
     return testsFactory.getAllTests();
   }

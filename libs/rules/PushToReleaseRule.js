@@ -9,8 +9,8 @@ const Rule = require('./Rule.js');
 class PushToReleaseRule extends Rule {
 
   isMatch() {
-    const { forceType } = this.dataSet;
-    return this.dataSet.branch === "release" && !forceType;
+    const { forceType, eventType } = this.dataSet;
+    return this.dataSet.branch === "release" && !forceType && eventType === "push";
   }
 
   getTests(tests) {

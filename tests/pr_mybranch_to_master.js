@@ -184,3 +184,11 @@ test(pr, "mybranch", "master", [
   deployment(),
   uat("uat.php")
 ]);
+
+
+test(pr, "release", "master", [
+  "dummy commit",
+], [
+  // consider only the last occurence of [force uat]
+  unittests(),
+]);

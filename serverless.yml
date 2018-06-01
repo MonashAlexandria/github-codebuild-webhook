@@ -1,4 +1,4 @@
-service: Alexandria-codebuild-github-webhook-2
+service: CodeBuild-Github-webhook
 
 plugins:
   - serverless-step-functions
@@ -23,7 +23,7 @@ provider:
     - Effect: "Allow"
       Action:
         - codebuild:*
-      Resource: "arn:aws:codebuild:#{AWS::Region}:#{AWS::AccountId}:project/Alexandria"
+      Resource: "arn:aws:codebuild:#{AWS::Region}:#{AWS::AccountId}:project/AlexandriaBuild"
     - Effect: "Allow"
       Action:
         - kms:*
