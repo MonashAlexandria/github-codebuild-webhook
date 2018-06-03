@@ -98,7 +98,18 @@ stepFunctions:
           start_build:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:#{AWS::StackName}-start-build"
-            Next: build_done
+            Next: check_start_build_outcome
+          check_start_build_outcome:
+            Type: Choice
+            Choices:
+            - Variable: "$.buildable"
+              StringEquals: "true"
+              Next: build_done
+            Default: wait_start_build
+          wait_start_build:
+            Type: Wait
+            Seconds: 10
+            Next: start_build
           build_done:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:#{AWS::StackName}-build-done"
