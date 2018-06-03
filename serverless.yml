@@ -1,4 +1,4 @@
-service: Alexandria-codebuild-github-webhook-2
+service: CodeBuild-Github-webhook
 
 plugins:
   - serverless-step-functions
@@ -23,7 +23,7 @@ provider:
     - Effect: "Allow"
       Action:
         - codebuild:*
-      Resource: "arn:aws:codebuild:#{AWS::Region}:#{AWS::AccountId}:project/Alexandria"
+      Resource: "arn:aws:codebuild:#{AWS::Region}:#{AWS::AccountId}:project/AlexandriaBuild"
     - Effect: "Allow"
       Action:
         - kms:*
@@ -32,11 +32,18 @@ provider:
 
 
 functions:
+  check-build-status:
+    handler: libs/events/check_build_status.handler
+    events:
+      - cloudwatchEvent:
+          name: 'codebuild-events'
+          event:
+            source:
+              - "aws.codebuild"
+            detail-type:
+              - "CodeBuild Build State Change"
   start-build:
     handler: handler.start_build
-
-  check-build-status:
-    handler: handler.check_build_status
 
   build-done:
     handler: handler.build_done
@@ -97,31 +104,12 @@ stepFunctions:
             Choices:
             - Variable: "$.buildable"
               StringEquals: "true"
-              Next: check_build_status
+              Next: build_done
             Default: wait_start_build
           wait_start_build:
             Type: Wait
             Seconds: 10
             Next: start_build
-          wait_a_bit:
-            Type: Wait
-            Seconds: 10
-            Next: check_build_status
-          check_build_status:
-            Type: Task
-            Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:#{AWS::StackName}-check-build-status"
-            Next: check_build_status_outcome
-            Retry:
-              - ErrorEquals: [ "States.TaskFailed" ]
-                IntervalSeconds: 3
-                MaxAttempts: 3
-          check_build_status_outcome:
-            Type: Choice
-            Choices:
-            - Variable: "$.buildComplete"
-              StringEquals: "completed"
-              Next: build_done
-            Default: wait_a_bit
           build_done:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:#{AWS::StackName}-build-done"

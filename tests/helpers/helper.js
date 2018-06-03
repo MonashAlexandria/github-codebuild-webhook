@@ -16,8 +16,12 @@ function uat(name, deployable = false) {
   };
 }
 
-function uat_deployable(name) {
-  return uat(name, true);
+function deployment(){
+    return {
+        deployable: true,
+        name: 'deployment',
+        type: 'deployment'
+    };
 }
 
 function functional(name = "functional", deployable = false) {
@@ -26,10 +30,6 @@ function functional(name = "functional", deployable = false) {
     type: "functional",
     deployable
   };
-}
-
-function functional_deployable(name = "functional") {
-  return functional(name, true);
 }
 
 function push(t, branch, commitMsg, expectedTests) {
@@ -57,34 +57,35 @@ function push(t, branch, commitMsg, expectedTests) {
   t.deepEqual(build.getTests(), expectedTests, commitMsg);
 }
 
-function pr(t, branch, targetBranch, commitMsg, expectedTests) {
+function pr(t, branch, baseBranch, commitMsg, expectedTests) {
   if (Array.isArray(branch)) {
     return branch.forEach(b => {
-      pr(t, b, targetBranch, commitMsg, expectedTests);
+      pr(t, b, baseBranch, commitMsg, expectedTests);
   });
   }
 
   if (Array.isArray(commitMsg)) {
     return commitMsg.forEach(msg => {
-      pr(t, branch, targetBranch, msg, expectedTests);
+      pr(t, branch, baseBranch, msg, expectedTests);
     });
   }
 
   const build = new Pr({
     pull_request: {
       head: {
-        sha: ""
+        sha: "",
+        ref: branch
       },
       base: {
-        ref: targetBranch
+        ref: baseBranch
       }
     },
-    ref: branch,
     after: "",
     repository: "alexandria"
   }, commitMsg);
 
-  t.deepEqual(build.getTests(), expectedTests, commitMsg);
+  const tests = build.getTests();
+  t.deepEqual(tests, expectedTests, commitMsg);
 }
 
 push.title = (title, branch, commitMsg, expectedTests) => `push '${branch}' '${commitMsg}'`.trim();
@@ -95,7 +96,6 @@ module.exports = {
   pr,
   unittests,
   functional,
-  functional_deployable,
-  uat,
-  uat_deployable
+  deployment,
+  uat
 };

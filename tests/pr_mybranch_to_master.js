@@ -2,10 +2,9 @@ let { test } = require('ava');
 let {
   pr,
   unittests,
-  functional_deployable,
   functional,
   uat,
-  uat_deployable
+  deployment
 } = require('./helpers/helper.js');
 
 test(pr, "mybranch", "master", [
@@ -21,13 +20,6 @@ test(pr, "mybranch", "master", [
   unittests()
 ]);
 
-test(pr, "mybranch", "master", [
-  "[skip unit-tests]",
-  "[skip unit-tests][on push]",
-  "[skip unit-tests][on push][on pr]"
-], [
-  // no tests
-]);
 
 test(pr, "mybranch", "master", [
   "[force functional]",
@@ -35,7 +27,8 @@ test(pr, "mybranch", "master", [
   "[force functional][on pr][on push]"
 ], [
   unittests(),
-  functional_deployable()
+  deployment(),
+  functional()
 ]);
 
 test(pr, "mybranch", "master", [
@@ -44,7 +37,8 @@ test(pr, "mybranch", "master", [
   "[force functional f.php][on pr][on push]"
 ], [
   unittests(),
-  functional_deployable("f.php")
+  deployment(),
+  functional("f.php")
 ]);
 
 test(pr, "mybranch", "master", [
@@ -52,7 +46,8 @@ test(pr, "mybranch", "master", [
   "[skip unit-tests][force functional][on pr]",
   "[skip unit-tests][force functional][on pr][on push]"
 ], [
-  functional_deployable()
+  deployment(),
+  functional()
 ]);
 
 test(pr, "mybranch", "master", [
@@ -60,7 +55,8 @@ test(pr, "mybranch", "master", [
   "[skip unit-tests][force functional f.php][on pr]",
   "[skip unit-tests][force functional f.php][on pr][on push]"
 ], [
-  functional_deployable("f.php")
+  deployment(),
+  functional("f.php")
 ]);
 
 test(pr, "mybranch", "master", [
@@ -104,7 +100,8 @@ test(pr, "mybranch", "master", [
   "Should work with multilines\n[force uat]"
 ], [
   unittests(),
-  uat_deployable("backend"),
+  deployment(),
+  uat("backend"),
   uat("frontend"),
   functional()
 ]);
@@ -115,7 +112,8 @@ test(pr, "mybranch", "master", [
   "[force uat uat.php][on pr][on push]"
 ], [
   unittests(),
-  uat_deployable("uat.php")
+  deployment(),
+  uat("uat.php")
 ]);
 
 test(pr, "mybranch", "master", [
@@ -123,7 +121,8 @@ test(pr, "mybranch", "master", [
   "[skip unit-tests][force uat][on pr]",
   "[skip unit-tests][force uat][on pr][on push]"
 ], [
-  uat_deployable("backend"),
+  deployment(),
+  uat("backend"),
   uat("frontend"),
   functional()
 ]);
@@ -133,7 +132,8 @@ test(pr, "mybranch", "master", [
   "[skip unit-tests][force uat uat.php][on pr]",
   "[skip unit-tests][force uat uat.php][on pr][on push]"
 ], [
-  uat_deployable("uat.php")
+  deployment(),
+  uat("uat.php")
 ]);
 
 test(pr, "mybranch", "master", [
@@ -181,5 +181,14 @@ test(pr, "mybranch", "master", [
 ], [
   // consider only the last occurence of [force uat]
   unittests(),
-  uat_deployable("uat.php")
+  deployment(),
+  uat("uat.php")
+]);
+
+
+test(pr, "release", "master", [
+  "dummy commit",
+], [
+  // consider only the last occurence of [force uat]
+  unittests(),
 ]);
