@@ -30,10 +30,6 @@ const region = process.env.AWS_DEFAULT_REGION;
 // get the github status context
 const githubContext = process.env.GITHUB_STATUS_CONTEXT;
 
-const slackHookUrlCode = process.env.SLACK_HOOK_URL_CODE;
-const slackChannel = process.env.SLACK_CHANNEL;
-
-
 module.exports.start_build_proxy = (event, context, callback) => {
   console.log("Forwarding request", event);
   console.log(event.body);
@@ -184,9 +180,8 @@ function executeStartBuild(event, context, callback){
         return;
       }
 
-      Promise.all(buildTasks).then(dataItems => {
-        response.responses = githubBuild.updateGithub(dataItems);
-        callback(null, response);
+      Promise.all(buildTasks).then(() => {
+        callback(null, 'done');
       }).catch(err => {
         console.log(err, err.stack);
         callback(err);
@@ -196,102 +191,10 @@ function executeStartBuild(event, context, callback){
   });
 }
 
-module.exports.check_build_status = (event, context, callback) => {
-  if(githubUsername && githubToken){
-    console.log('Everything is ready, just start');
-    // setup github client
-    github.authenticate({
-      type: "basic",
-      username: githubUsername,
-      password: githubToken
-    });
-    checkBuildStatus(event, context, callback);
-  } else {
-    console.log('Need to decrypt github username and token');
-    kms.decrypt({
-      CiphertextBlob: new Buffer(process.env.GITHUB_USERNAME, "base64")
-    }).promise().then(data => {
-
-      githubUsername = data.Plaintext.toString();
-
-      kms.decrypt({
-        CiphertextBlob: new Buffer(process.env.GITHUB_ACCESS_TOKEN, "base64")
-      }).promise().then(token => {
-        githubToken = token.Plaintext.toString();
-        // setup github client
-        github.authenticate({
-          type: "basic",
-          username: githubUsername,
-          password: githubToken
-        });
-        checkBuildStatus(event, context, callback);
-      });
-
-    }).catch(err => {
-      console.log(err);
-      callback(err);
-    });
-  }
-
-};
-
-function checkBuildStatus(event, context, callback) {
-  let responses = event.responses;
-  console.log(responses);
-  let ids = responses.reduce((buildIds, response) => {
-    buildIds.push(response.buildId);
-    return buildIds;
-  }, []);
-
-  console.log(ids);
-
-  let getBuildsPromise = codebuild.batchGetBuilds({ ids: ids }).promise();
-  let response = {
-    responses: responses
-  };
-
-  getBuildsPromise.then(data => {
-    console.log(data);
-    let buildComplete = true;
-    buildComplete = data.builds.reduce((buildComplete, build) => {
-      buildComplete &= build.buildComplete;
-      return buildComplete;
-    }, buildComplete);
-
-    console.log('buildComplete', buildComplete);
-
-    let builds = data.builds;
-    for(let build of builds){
-      const buildId = build.id;
-      console.log("buildId", buildId);
-      responses = responses.map(res => {
-        console.log("res.buildId", res.buildId);
-        if(res.buildId == buildId) {
-          const preBuildComplete = res.buildComplete;
-          res.buildComplete = build.buildComplete;
-          res.buildStatus = build.buildStatus;
-          if(!preBuildComplete && res.buildComplete) {
-            GithubBuild.finishBuild(res, context);
-          }
-        }
-        return res;
-      });
-    }
-
-    response.buildComplete = buildComplete ? "completed" : "running";//bug in Lambda Choice;
-    console.log('response.buildComplete', response.buildComplete);
-    response.responses = responses;
-    callback(null, response);
-  }).catch(err => {
-    console.log(err, err.stack);
-    context.fail(err);
-    callback(err);
-  });
-}
-
 module.exports.build_done = (event, context, callback) => {
   callback(null, 'done');
 };
+
 
 class GithubBuild {
 
@@ -306,7 +209,7 @@ class GithubBuild {
   }
 
   getCommitSha(event){
-    return this.event.after;
+    return this.event.after.startsWith('00000000000000') ? this.event.before : this.event.after;
   }
 
   getEventType(){
@@ -318,7 +221,7 @@ class GithubBuild {
   }
 
   getSourceVersion() {
-    return this.event.after;
+    return this.event.after.startsWith('00000000000000') ? this.event.before : this.event.after;
   }
 
   getProjectName() {
@@ -326,7 +229,7 @@ class GithubBuild {
   }
 
   getCommitMsg() {
-    return this.event.head_commit.message;
+    return this.event.head_commit ? this.event.head_commit.message : "-";
   }
 
   getSlackMsg() {
@@ -334,11 +237,11 @@ class GithubBuild {
   }
 
   getUrl() {
-    return this.event.head_commit.url;
+    return this.event.head_commit ? this.event.head_commit.url : this.event.compare;
   }
 
   getAuthor() {
-    return this.event.head_commit.author.username;
+    return this.event.head_commit ? this.event.head_commit.author.username : this.event.pusher.name;
   }
 
   getEnvVariables(){
@@ -447,6 +350,31 @@ class GithubBuild {
         value: deployable.toString() //string only
       });
 
+      envVariables.push({
+        name: "REPO_OWNER",
+        value: this.repo.owner.login //string only
+      });
+
+      envVariables.push({
+        name: "REPO_NAME",
+        value: this.repo.name //string only
+      });
+
+      envVariables.push({
+        name: "URL",
+        value: this.getUrl() //string only
+      });
+
+      envVariables.push({
+        name: "AUTHOR",
+        value: this.getAuthor() //string only
+      });
+
+      envVariables.push({
+        name: "MESSAGE",
+        value: this.getSlackMsg() //string only
+      });
+
       const codeBuildParams = {
         projectName: this.getProjectName(),
         sourceVersion: this.getSourceVersion(),
@@ -506,87 +434,6 @@ class GithubBuild {
 
     }
     return responses;
-  }
-
-  static finishBuild(build, context) {
-    const commitSha = build.gitEvent.sha;
-    const repo = build.gitEvent.repo;
-
-    console.log('Found commit identifier: ' + build.gitEvent.sha);
-
-    // map the codebuild status to github state
-    const buildStatus = build.buildStatus;
-    let state = '';
-    let severity = "danger";
-    let noticeEmoji = ":bangbang:";
-    switch (buildStatus) {
-      case 'SUCCEEDED':
-        state = 'success';
-        severity = "good";
-        noticeEmoji = ":white_check_mark:";
-        break;
-      case 'FAILED':
-        state = 'failure';
-        break;
-      case 'FAULT':
-      case 'STOPPED':
-      case 'TIMED_OUT':
-        state = 'error';
-        break;
-      default:
-        state = 'pending'
-    }
-    console.log('Github state will be', state);
-
-    let targetUrl = 'https://' + region + '.console.aws.amazon.com/codebuild/home?region=' + region + '#/builds/' + build.buildId + '/view/new';
-
-    let postData = {
-      channel: slackChannel,
-      text: `* ${buildStatus} - Branch: ${build.gitEvent.branch} - Build: ${build.gitEvent.context}*`,
-      attachments: [
-        {
-          color: severity,
-          text: `${noticeEmoji} @${build.gitEvent.author} - <${build.gitEvent.url}|More on Github> - <${targetUrl}|Build log> \n ${build.gitEvent.message}`//noticeEmoji + buildStatus + ' - <' + targetUrl + '|More info...>'
-        }
-      ]
-    };
-
-    // POST to slack channel
-    const options = {
-      method: 'POST',
-      hostname: 'hooks.slack.com',
-      port: 443,
-      path: '/services/' + slackHookUrlCode
-    };
-    console.log(options);
-    console.log(postData);
-
-    const req = https.request(options, function(res) {
-      res.setEncoding('utf8');
-    });
-
-    req.on('error', function(e) {
-      console.log('problem with request: ' + e.message);
-    });
-
-    req.write(util.format("%j", postData));
-    req.end();
-
-    const githubData = {
-      owner: repo.owner.login,
-      repo: repo.name,
-      sha: commitSha,
-      state: state,
-      target_url: targetUrl,
-      context: build.gitEvent.context,
-      description: 'Build ' + buildStatus + '...'
-    };
-
-    // POST to github
-    github.repos.createStatus(githubData).catch(function (err) {
-      console.log(err);
-      context.fail(data);
-    });
   }
 
   static getGithubContextFromCbBuild(envVariables){
